@@ -40,4 +40,10 @@ src/
 ├── router/               # Vue Router configuratie
 ├── App.vue               # Rootcomponent
 └── main.js               # App initialisatie
-```
+``` 
+
+## 🚀 Starten
+
+```bash
+npm install
+npm run dev
