@@ -4,16 +4,16 @@ import OrderDetail from '../views/OrderDetail.vue';
 import LoginView from '../views/LoginView.vue';
 
 const routes = [
-  // 🌐 Root pad: ga altijd naar /login bij eerste bezoek (logica verplaatst naar guard)
+  // Root pad: ga altijd naar /login bij eerste bezoek (logica verplaatst naar guard)
   { path: '/', redirect: '/login' },
 
-  // 🔐 Loginpagina
+  // Loginpagina
   { path: '/login', name: 'Login', component: LoginView },
 
-  // 🔧 Admin overzicht (beveiligd)
+  // Admin overzicht (beveiligd)
   { path: '/admin', name: 'Admin', component: AdminView },
 
-  // 📄 Order detailpagina (beveiligd)
+  // Order detailpagina (beveiligd)
   { path: '/admin/order/:id', name: 'OrderDetail', component: OrderDetail }
 ];
 
@@ -22,7 +22,7 @@ const router = createRouter({
   routes
 });
 
-// 🔐 Router Guard: bescherm alle routes behalve /login
+// Router Guard: bescherm alle routes behalve /login
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token');
 

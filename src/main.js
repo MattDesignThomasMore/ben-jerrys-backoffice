@@ -3,7 +3,7 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
 
-// 🔐 Token check bij opstart: verwijder als hij verlopen is
+// Token check bij opstart: verwijder als hij verlopen is
 const token = localStorage.getItem('token')
 if (token) {
   try {
