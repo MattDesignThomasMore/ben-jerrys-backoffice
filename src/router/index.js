@@ -1,21 +1,42 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import AdminView from '../views/AdminView.vue'
-import OrderDetail from '../views/OrderDetail.vue'
+import { createRouter, createWebHistory } from 'vue-router';
+import AdminView from '../views/AdminView.vue';
+import OrderDetail from '../views/OrderDetail.vue';
+import LoginView from '../views/LoginView.vue';
 
 const routes = [
-  // 👉 Redirect root ("/") naar /admin
-  { path: '/', redirect: '/admin' },
+  // 🌐 Root pad: ga altijd naar /login bij eerste bezoek (logica verplaatst naar guard)
+  { path: '/', redirect: '/login' },
 
-  // 🧾 Admin overzicht (lijst van bestellingen)
+  // 🔐 Loginpagina
+  { path: '/login', name: 'Login', component: LoginView },
+
+  // 🔧 Admin overzicht (beveiligd)
   { path: '/admin', name: 'Admin', component: AdminView },
 
-  // 📄 Order detailpagina
-  { path: '/admin/order/:id', name: 'OrderDetail', component: OrderDetail },
-]
+  // 📄 Order detailpagina (beveiligd)
+  { path: '/admin/order/:id', name: 'OrderDetail', component: OrderDetail }
+];
 
 const router = createRouter({
   history: createWebHistory(),
-  routes,
-})
+  routes
+});
 
-export default router
+// 🔐 Router Guard: bescherm alle routes behalve /login
+router.beforeEach((to, from, next) => {
+  const token = localStorage.getItem('token');
+
+  // Als gebruiker niet ingelogd is en probeert naar iets anders dan /login te gaan
+  if (to.path !== '/login' && !token) {
+    return next('/login');
+  }
+
+  // Als gebruiker al ingelogd is en naar /login wil → redirect naar /admin
+  if (to.path === '/login' && token) {
+    return next('/admin');
+  }
+
+  next();
+});
+
+export default router;

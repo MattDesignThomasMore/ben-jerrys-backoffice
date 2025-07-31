@@ -27,28 +27,39 @@ export default {
   },
   methods: {
     async updateStatus() {
-      await fetch(`http://localhost:5000/api/orders/${this.order._id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: this.selectedStatus })
-      });
-      this.$emit('refresh');
+      try {
+        const res = await fetch(`http://localhost:5000/api/orders/${this.order._id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer ' + localStorage.getItem('token')
+          },
+          body: JSON.stringify({ status: this.selectedStatus })
+        });
+
+        if (!res.ok) throw new Error('Update mislukt');
+
+        this.$emit('refresh');
+      } catch (err) {
+        console.error('Update-fout:', err);
+      }
     },
     async deleteOrder() {
-      await fetch(`http://localhost:5000/api/orders/${this.order._id}`, {
-        method: 'DELETE'
-      });
-      this.$emit('refresh');
+      try {
+        const res = await fetch(`http://localhost:5000/api/orders/${this.order._id}`, {
+          method: 'DELETE',
+          headers: {
+            Authorization: 'Bearer ' + localStorage.getItem('token')
+          }
+        });
+
+        if (!res.ok) throw new Error('Verwijderen mislukt');
+
+        this.$emit('refresh');
+      } catch (err) {
+        console.error('Verwijder-fout:', err);
+      }
     }
   }
 };
 </script>
-
-<style scoped>
-.order-card {
-  background: #f3f3f3;
-  padding: 15px;
-  border-radius: 10px;
-  margin-bottom: 15px;
-}
-</style>

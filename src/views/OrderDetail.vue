@@ -24,7 +24,7 @@
 
     <div class="field">
       <label>Prijs:</label>
-      <p>€ {{ parseFloat(order.price).toFixed(2) }}</p>
+      <p>€ {{ formattedPrice }}</p>
     </div>
 
     <div class="field">
@@ -50,28 +50,53 @@ export default {
   name: 'OrderDetail',
   data() {
     return {
-      order: {}
-    };
+      order: {},
+    }
+  },
+  computed: {
+    formattedPrice() {
+      return this.order.price ? parseFloat(this.order.price).toFixed(2) : '0.00'
+    },
   },
   async mounted() {
-    const id = this.$route.params.id;
-    const res = await fetch(`http://localhost:5000/api/orders/${id}`);
-    this.order = await res.json();
+    try {
+      const id = this.$route.params.id
+      const res = await fetch(`http://localhost:5000/api/orders/${id}`, {
+        headers: {
+          Authorization: 'Bearer ' + localStorage.getItem('token'),
+        },
+      })
+
+      if (!res.ok) {
+        throw new Error('Kon bestelling niet ophalen: ' + res.status)
+      }
+
+      this.order = await res.json()
+    } catch (err) {
+      console.error(err)
+    }
   },
   methods: {
     formatDate(date) {
-      if (!date) return 'Geen datum';
-      return new Date(date).toLocaleString('nl-BE');
+      if (!date) return 'Geen datum'
+      return new Date(date).toLocaleString('nl-BE')
     },
     async updateStatus() {
-      await fetch(`http://localhost:5000/api/orders/${this.order._id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: this.order.status })
-      });
-    }
-  }
-};
+      try {
+        await fetch(`http://localhost:5000/api/orders/${this.order._id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer ' + localStorage.getItem('token'),
+          },
+          body: JSON.stringify({ status: this.order.status }),
+        })
+      } catch (err) {
+        console.error('Fout bij updaten status:', err)
+      }
+    },
+  },
+}
 </script>
 
 <style scoped>
@@ -81,7 +106,7 @@ export default {
   background: #fff;
   padding: 30px;
   border-radius: 12px;
-  box-shadow: 0 0 15px rgba(0,0,0,0.1);
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
   font-family: sans-serif;
 }
 .field {
@@ -92,7 +117,8 @@ export default {
   display: block;
   margin-bottom: 4px;
 }
-.field p, select {
+.field p,
+select {
   background: #f3f3f3;
   padding: 8px;
   border-radius: 6px;
