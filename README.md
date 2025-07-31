@@ -38,6 +38,7 @@ src/
 ├── components/           # OrderCard, UI componenten
 ├── views/                # AdminView, OrderDetailView, ...
 ├── router/               # Vue Router configuratie
+├── assets/               # Textures & modellen
 ├── App.vue               # Rootcomponent
 └── main.js               # App initialisatie
 ``` 
