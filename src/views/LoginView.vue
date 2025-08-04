@@ -2,7 +2,7 @@
   <div class="login-container">
     <div class="overlay"></div>
     <div class="login-card">
-      <h2>Admin Login</h2>
+      <h2>Admin login</h2>
       <form @submit.prevent="handleLogin">
         <div class="input-group">
           <svg class="icon" viewBox="0 0 24 24">
