@@ -231,6 +231,6 @@ button:hover {
   right: 0.8rem; /* iets meer marge tov rand */
   width: 24px; /* groter canvas voor de svg */
   height: 24px;
-  overflow: visible; /* nogmaals: geen clipping */
+  overflow: visible; 
 }
 </style>
