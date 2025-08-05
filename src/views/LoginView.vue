@@ -82,7 +82,6 @@ export default {
 </script>
 
 <style>
-/* === GLOBAL === */
 html,
 body {
   margin: 0;
