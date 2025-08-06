@@ -12,7 +12,6 @@ const routes = [
 
   { path: '/admin', name: 'Admin', component: AdminView },
 
-  // Order detailpagina (beveiligd)
   { path: '/admin/order/:id', name: 'OrderDetail', component: OrderDetail }
 ];
 
