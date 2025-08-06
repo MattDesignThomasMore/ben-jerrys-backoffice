@@ -10,7 +10,6 @@ const routes = [
   // Loginpagina
   { path: '/login', name: 'Login', component: LoginView },
 
-  // Admin overzicht (beveiligd)
   { path: '/admin', name: 'Admin', component: AdminView },
 
   // Order detailpagina (beveiligd)
