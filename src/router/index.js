@@ -21,7 +21,7 @@ const router = createRouter({
   routes
 });
 
-// Router Guard: bescherm alle routes behalve /login
+
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token');
 
