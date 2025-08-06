@@ -29,7 +29,7 @@ router.beforeEach((to, from, next) => {
     return next('/login');
   }
 
-  // Als gebruiker al ingelogd is en naar /login wil → redirect naar /admin
+  // Als gebruiker al ingelogd is en naar
   if (to.path === '/login' && token) {
     return next('/admin');
   }
