@@ -104,7 +104,7 @@ body {
   height: 100vh; /* hele viewport */
   width: 100vw;
   display: flex;
-  align-items: center; /* verticaal midden */
+  align-items: center; 
   justify-content: center; /* horizontaal midden */
   position: relative;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
