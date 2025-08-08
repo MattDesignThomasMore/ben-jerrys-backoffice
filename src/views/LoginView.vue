@@ -223,7 +223,7 @@ button:hover {
 
 .input-group input {
   /* was: padding: 0.9rem 2.8rem; */
-  padding: 0.9rem 3.2rem; /* meer ruimte voor een bredere toggle-icon */
+  padding: 0.9rem 3.2rem; 
 }
 
 .toggle-icon {
