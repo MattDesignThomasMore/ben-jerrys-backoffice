@@ -228,8 +228,8 @@ button:hover {
 
 .toggle-icon {
   position: absolute;
-  right: 0.8rem; /* iets meer marge tov rand */
-  width: 24px; /* groter canvas voor de svg */
+  right: 0.8rem; 
+  width: 24px; 
   height: 24px;
   overflow: visible; 
 }
