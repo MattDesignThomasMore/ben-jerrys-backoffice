@@ -103,7 +103,7 @@ body {
   width: 100vw;
   display: flex;
   align-items: center; 
-  justify-content: center; /* horizontaal midden */
+  justify-content: center; 
   position: relative;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
