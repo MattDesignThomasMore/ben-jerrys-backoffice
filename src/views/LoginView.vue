@@ -1,4 +1,4 @@
-<template>
+<template> 
   <div class="login-container">
     <div class="overlay"></div>
     <div class="login-card">
@@ -92,8 +92,6 @@ body {
 }
 
 body {
-  /* 荷 jouw foto 2 in de achtergrond:
-     vervang de URL hieronder door die van foto 2 */
   background: url('https://images.unsplash.com/photo-1542281286-9e0a16bb7366?auto=format&fit=crop&w=1950&q=80')
     no-repeat center center fixed;
   background-size: cover;
