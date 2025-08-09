@@ -99,7 +99,7 @@ body {
 
 /* === COMPONENT === */
 .login-container {
-  height: 100vh; /* hele viewport */
+  height: 100vh; 
   width: 100vw;
   display: flex;
   align-items: center; 
