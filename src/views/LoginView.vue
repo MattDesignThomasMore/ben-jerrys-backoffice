@@ -97,7 +97,7 @@ body {
   background-size: cover;
 }
 
-/* === COMPONENT === */
+
 .login-container {
   height: 100vh; 
   width: 100vw;
