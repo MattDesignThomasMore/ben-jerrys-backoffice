@@ -218,7 +218,7 @@ button:hover {
 
 .input-group {
   position: relative;
-  overflow: visible; /* voorkomt dat iconen worden geknipt */
+  overflow: visible; /* voorkomt dat iconen worden 
 }
 
 .input-group input {
