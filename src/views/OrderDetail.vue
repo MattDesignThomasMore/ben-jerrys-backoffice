@@ -1,4 +1,3 @@
-// OrderDetail
 <template>
   <div class="order-detail">
     <h1>📝 Bestelling Details</h1>
