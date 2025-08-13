@@ -4,7 +4,7 @@ import OrderDetail from '../views/OrderDetail.vue';
 import LoginView from '../views/LoginView.vue';
 
 const routes = [
-  // Root pad: ga altijd naar /
+  // Root pad: ga 
   { path: '/', redirect: '/login' },
 
   // Loginpagina
