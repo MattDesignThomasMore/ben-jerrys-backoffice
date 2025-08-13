@@ -7,7 +7,7 @@ const routes = [
  
   { path: '/', redirect: '/login' },
 
-  // Loginpagina
+  // Loginpagih
   { path: '/login', name: 'Login', component: LoginView },
 
   { path: '/admin', name: 'Admin', component: AdminView },
