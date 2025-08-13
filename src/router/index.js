@@ -4,7 +4,7 @@ import OrderDetail from '../views/OrderDetail.vue';
 import LoginView from '../views/LoginView.vue';
 
 const routes = [
-  // Root pad: ga altijd naar /login bij eerste bezoek (logica verplaatst naar guard)
+  // Root pad: ga altijd naar /
   { path: '/', redirect: '/login' },
 
   // Loginpagina
