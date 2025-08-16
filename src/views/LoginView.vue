@@ -107,7 +107,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: url('https://images.unsplash.com/photo-1542281286-9e0a16bb7366?auto=format&fit=crop&w=1950&q=80')
+  background: url('https://www.benjerry.com/files/live/sites/systemsite/files/US%20and%20Global%20Assets/Misc%20and%20Sitewide%20Assets/Cards/card_scoop_shop_1080x720.jpg?imwidth=1200')
     no-repeat center center / cover;
 }
 
@@ -115,7 +115,7 @@ export default {
   position: absolute;
   inset: 0;
   background-color: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(px);
   z-index: 0;
 }
 
