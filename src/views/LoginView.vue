@@ -1,55 +1,65 @@
-<template> 
-  <div class="login-container">
-    <div class="overlay"></div>
-    <div class="login-card">
-      <h2>Admin login</h2>
-      <form @submit.prevent="handleLogin">
-        <div class="input-group">
-          <svg class="icon" viewBox="0 0 24 24">
-            <path
-              fill="currentColor"
-              d="M12 12c2.21 0 4-1.79 4-4S14.21 4 12 4 8 5.79 8 8s1.79 4 4 4Zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4Z"
-            />
-          </svg>
-          <input type="email" v-model="email" placeholder="Email" required />
-        </div>
+<template>
+  <div class="login-page">
+    <div class="login-container">
+      <div class="overlay"></div>
 
-        <div class="input-group">
-          <svg class="icon" viewBox="0 0 24 24">
-            <path
-              fill="currentColor"
-              d="M12 1a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V11a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5Zm-3 5a3 3 0 1 1 6 0v3H9V6Zm3 6a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Z"
-            />
-          </svg>
-          <input
-            :type="showPassword ? 'text' : 'password'"
-            v-model="password"
-            placeholder="Wachtwoord"
-            required
-          />
-          <svg class="toggle-icon" @click="togglePassword" viewBox="0 0 24 24">
-            <path
-              v-if="!showPassword"
-              fill="currentColor"
-              d="M12 4.5c-4.8 0-8.8 3.2-10 7.5 1.2 4.3 5.2 7.5 10 7.5s8.8-3.2 10-7.5c-1.2-4.3-5.2-7.5-10-7.5Zm0 13c-3 0-5.6-2.1-6.4-5 .8-2.9 3.4-5 6.4-5s5.6 2.1 6.4 5c-.8 2.9-3.4 5-6.4 5Zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"
-            />
-            <path
-              v-else
-              fill="currentColor"
-              d="M2 4.27 3.28 3 21 20.72 19.73 22l-2.4-2.4C15.78 20.16 13.96 21 12 21c-4.8 0-8.8-3.2-10-7.5.6-2.2 2-4.1 3.8-5.4L2 4.27ZM12 5c1.3 0 2.5.4 3.5 1.1l-1.6 1.6A4.98 4.98 0 0 0 12 7a5 5 0 0 0-5 5c0 .7.1 1.3.3 1.9L4.6 9.5C5.7 6.8 8.7 5 12 5Zm0 14c1.3 0 2.5-.4 3.5-1.1l-2.5-2.5a4.98 4.98 0 0 1-6.3-6.3l-2.5-2.5c-1.1 1.7-1.8 3.6-2.1 5.6C3.2 15.8 7.2 19 12 19Z"
-            />
-          </svg>
-        </div>
+      <div class="login-card">
+        <h2>Admin login</h2>
 
-        <button type="submit">Login</button>
-        <p v-if="error" class="error">{{ error }}</p>
-      </form>
+        <form @submit.prevent="handleLogin">
+          <div class="input-group">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M12 12c2.21 0 4-1.79 4-4S14.21 4 12 4 8 5.79 8 8s1.79 4 4 4Zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4Z"
+              />
+            </svg>
+            <input type="email" v-model="email" placeholder="Email" required />
+          </div>
+
+          <div class="input-group">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M12 1a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V11a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5Zm-3 5a3 3 0 1 1 6 0v3H9V6Zm3 6a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3Z"
+              />
+            </svg>
+
+            <input
+              :type="showPassword ? 'text' : 'password'"
+              v-model="password"
+              placeholder="Wachtwoord"
+              required
+            />
+
+            <!-- Perfecte, consistente Material icons -->
+            <svg class="toggle-icon" @click="togglePassword" viewBox="0 0 24 24" aria-hidden="true">
+              <!-- visibility (open eye) -->
+              <path
+                v-if="!showPassword"
+                fill="currentColor"
+                d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5Zm0 12.5c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5Zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"
+              />
+              <!-- visibility_off (eye with slash) -->
+              <path
+                v-else
+                fill="currentColor"
+                d="M12 7c2.76 0 5 2.24 5 5 0 .74-.16 1.45-.46 2.08l2.15 2.15C20.53 14.9 21.74 13.08 23 12c-1.73-4.39-6-7.5-11-7.5-1.59 0-3.11.29-4.5.82l2.19 2.19C10.55 7.16 11.26 7 12 7Zm-9.9-4.1L3.5 4.3l1.72 1.72C3.82 7.34 2.39 9.45 1 12c1.73 4.39 6 7.5 11 7.5 2.02 0 3.94-.49 5.63-1.36L19.7 20.2l1.41-1.41L3.51 2.49 2.1 2.9ZM7.91 8.71l1.53 1.53c-.3.45-.44.98-.38 1.54.12 1.17 1.05 2.1 2.22 2.22.56.06 1.09-.08 1.54-.38l1.53 1.53c-.88.52-1.89.79-2.95.68-2.02-.22-3.63-1.84-3.85-3.86-.11-1.06.16-2.07.68-2.96Z"
+              />
+            </svg>
+          </div>
+
+          <button type="submit">Login</button>
+          <p v-if="error" class="error">{{ error }}</p>
+        </form>
+      </div>
     </div>
   </div>
 </template>
 
 <script>
 export default {
+  name: 'LoginView',
   data() {
     return {
       email: '',
@@ -81,31 +91,24 @@ export default {
 }
 </script>
 
-<style>
-html,
-body {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden; 
-}
-
-body {
-  background: url('https://images.unsplash.com/photo-1542281286-9e0a16bb7366?auto=format&fit=crop&w=1950&q=80')
-    no-repeat center center fixed;
-  background-size: cover;
-}
-
-
-.login-container {
-  height: 100vh; 
-  width: 100vw;
-  display: flex;
-  align-items: center; 
-  justify-content: center; 
-  position: relative;
+<style scoped>
+/* === Vaste canvas — geen scrollbars === */
+.login-page {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Achtergrond + centering in eigen container */
+.login-container {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: url('https://images.unsplash.com/photo-1542281286-9e0a16bb7366?auto=format&fit=crop&w=1950&q=80')
+    no-repeat center center / cover;
 }
 
 .overlay {
@@ -116,48 +119,51 @@ body {
   z-index: 0;
 }
 
+/* === Card — breder zoals je voorbeeld === */
 .login-card {
   position: relative;
   z-index: 1;
   background: #fff;
   padding: 2.5rem 2rem;
   border-radius: 1.25rem;
-  width: 90%;
-  max-width: 420px;
-  max-height: 90vh;
+  width: min(560px, 92%); /* << breder */
+  max-height: 90%;
   overflow-y: auto;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
 }
 
 h2 {
   text-align: center;
-  font-size: 1.8rem;
-  font-weight: 600;
+  font-size: 2rem; /* iets groter voor de brede kaart */
+  font-weight: 700;
   color: #2e3a59;
   margin-bottom: 2rem;
 }
 
+/* Form & inputs */
 form {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.1rem;
 }
 
 .input-group {
   position: relative;
   display: flex;
   align-items: center;
+  /* niets verbergt iconen */
 }
 
 .input-group input {
   width: 100%;
-  padding: 0.9rem 2.8rem;
+  padding: 0.95rem 3.4rem 0.95rem 3rem; /* extra ruimte rechts voor eye-off */
   border: 1px solid #d0d5dd;
   border-radius: 0.75rem;
   font-size: 1rem;
   color: #2e3a59;
   background-color: #f9fafb;
   transition: 0.2s ease;
+  appearance: none;
 }
 
 .input-group input:focus {
@@ -173,26 +179,32 @@ form {
   width: 20px;
   height: 20px;
   fill: #a0aec0;
+  pointer-events: none;
 }
 
+/* Eye/Eye-off — nooit afgekapt */
 .toggle-icon {
   position: absolute;
-  right: 1rem;
-  width: 20px;
-  height: 20px;
+  right: 0.9rem;
+  width: 24px;
+  height: 24px;
+  display: block;
   fill: #4a4a4a;
   cursor: pointer;
   transition: 0.2s ease;
+  z-index: 2; /* boven input */
 }
 
 .toggle-icon:hover {
   fill: #4facfe;
 }
 
+/* Button */
 button {
-  padding: 0.9rem;
+  margin-top: 0.3rem;
+  padding: 0.95rem;
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 700;
   border: none;
   border-radius: 0.75rem;
   background-color: #4facfe;
@@ -214,20 +226,9 @@ button:hover {
   font-size: 0.9rem;
 }
 
-.input-group {
-  position: relative;
-  overflow: visible; 
-}
-
-.input-group input {
-  padding: 0.9rem 3.2rem; 
-}
-
-.toggle-icon {
-  position: absolute;
-  right: 0.8rem; 
-  width: 24px; 
-  height: 24px;
-  overflow: visible; 
+/* Safety: geen horizontale overflow door children */
+.login-page * {
+  box-sizing: border-box;
+  max-width: 100%;
 }
 </style>
