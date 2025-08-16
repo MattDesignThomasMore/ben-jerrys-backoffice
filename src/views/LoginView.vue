@@ -32,15 +32,12 @@
               required
             />
 
-            <!-- Perfecte, consistente Material icons -->
             <svg class="toggle-icon" @click="togglePassword" viewBox="0 0 24 24" aria-hidden="true">
-              <!-- visibility (open eye) -->
               <path
                 v-if="!showPassword"
                 fill="currentColor"
                 d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5Zm0 12.5c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5Zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"
               />
-              <!-- visibility_off (eye with slash) -->
               <path
                 v-else
                 fill="currentColor"
@@ -50,6 +47,13 @@
           </div>
 
           <button type="submit">Login</button>
+
+          <!-- subtiele disclaimer onder de knop -->
+          <p class="admin-note">
+            Alleen voor beheerders · gekoppeld aan de Ben &amp; Jerry’s Ice Configurator. Klanten
+            bestellen via de configurator.
+          </p>
+
           <p v-if="error" class="error">{{ error }}</p>
         </form>
       </div>
@@ -100,7 +104,6 @@ export default {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-/* Achtergrond + centering in eigen container */
 .login-container {
   position: absolute;
   inset: 0;
@@ -114,19 +117,18 @@ export default {
 .overlay {
   position: absolute;
   inset: 0;
-  background-color: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(px);
+  background-color: rgba(190, 188, 188, 0.7);
+  backdrop-filter: blur(10px);
   z-index: 0;
 }
 
-/* === Card — breder zoals je voorbeeld === */
 .login-card {
   position: relative;
   z-index: 1;
   background: #fff;
   padding: 2.5rem 2rem;
   border-radius: 1.25rem;
-  width: min(560px, 92%); /* << breder */
+  width: min(660px, 92%);
   max-height: 90%;
   overflow-y: auto;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
@@ -134,13 +136,21 @@ export default {
 
 h2 {
   text-align: center;
-  font-size: 2rem; /* iets groter voor de brede kaart */
+  font-size: 2rem;
   font-weight: 700;
   color: #2e3a59;
-  margin-bottom: 2rem;
+  margin-bottom: 2rem; /* <-- hier meer ruimte, was 0.5rem */
 }
 
-/* Form & inputs */
+/* Subtiele backoffice vermelding */
+.subtle-note {
+  text-align: center;
+  font-size: 0.9rem;
+  color: #6b7280;
+  margin-bottom: 1.6rem;
+}
+
+/* Form */
 form {
   display: flex;
   flex-direction: column;
@@ -151,12 +161,11 @@ form {
   position: relative;
   display: flex;
   align-items: center;
-  /* niets verbergt iconen */
 }
 
 .input-group input {
   width: 100%;
-  padding: 0.95rem 3.4rem 0.95rem 3rem; /* extra ruimte rechts voor eye-off */
+  padding: 0.95rem 3.4rem 0.95rem 3rem;
   border: 1px solid #d0d5dd;
   border-radius: 0.75rem;
   font-size: 1rem;
@@ -182,7 +191,6 @@ form {
   pointer-events: none;
 }
 
-/* Eye/Eye-off — nooit afgekapt */
 .toggle-icon {
   position: absolute;
   right: 0.9rem;
@@ -192,14 +200,13 @@ form {
   fill: #4a4a4a;
   cursor: pointer;
   transition: 0.2s ease;
-  z-index: 2; /* boven input */
+  z-index: 2;
 }
 
 .toggle-icon:hover {
   fill: #4facfe;
 }
 
-/* Button */
 button {
   margin-top: 0.3rem;
   padding: 0.95rem;
@@ -220,13 +227,21 @@ button:hover {
   box-shadow: 0 10px 30px rgba(79, 172, 254, 0.35);
 }
 
+/* Subtiele disclaimer onder knop */
+.admin-note {
+  margin-top: 0.6rem;
+  font-size: 0.8rem;
+  text-align: center;
+  color: #9ca3af; /* lichter grijs */
+  line-height: 1.35;
+}
+
 .error {
   color: #e74c3c;
   text-align: center;
   font-size: 0.9rem;
 }
 
-/* Safety: geen horizontale overflow door children */
 .login-page * {
   box-sizing: border-box;
   max-width: 100%;
