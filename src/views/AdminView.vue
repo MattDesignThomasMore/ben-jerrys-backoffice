@@ -265,7 +265,7 @@ export default {
   font-size: 0.95rem;
 }
 
-/* ---------- Button ---------- */
+/* ---------- Button ----------- */
 .btn {
   appearance: none;
   border: 1px solid var(--border);
