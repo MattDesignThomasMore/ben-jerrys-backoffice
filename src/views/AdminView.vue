@@ -1,8 +1,8 @@
 <template>
-  <div class="admin-shell">
+  <div class="admin-shell" @keydown="onGlobalHotkeys">
     <!-- Sidebar -->
     <aside class="sidebar" aria-label="Hoofdnavigatie">
-      <div class="brand">
+      <div class="brand" aria-label="Merk en omgeving">
         <span class="logo" aria-hidden="true">🍦</span>
         <div class="brand-text">
           <strong>Ben &amp; Jerry’s</strong>
@@ -10,7 +10,7 @@
         </div>
       </div>
 
-      <nav class="nav">
+      <nav class="nav" role="navigation">
         <button type="button" class="nav-item active" @click="scrollTo('orders')">
           <span class="nav-ico">📦</span>
           <span>Bestellingen</span>
@@ -32,28 +32,86 @@
 
       <div class="sidebar-spacer"></div>
 
-      <button type="button" class="btn-logout" @click="logout">🚪 Uitloggen</button>
+      <button type="button" class="btn-logout" @click="confirmLogout">🚪 Uitloggen</button>
     </aside>
 
     <!-- Content -->
     <main class="content">
-      <header class="topbar">
+      <header class="topbar" role="banner">
         <div class="title-wrap">
           <h1>Adminpaneel</h1>
           <p class="subtitle">Beheer van alle custom ijs-bestellingen</p>
         </div>
 
-        <button type="button" class="btn primary only-desktop" @click="logout">Logout</button>
+        <div class="topbar-actions only-desktop">
+          <button
+            type="button"
+            class="btn"
+            @click="refreshOrders"
+            :aria-busy="isRefreshing ? 'true' : 'false'"
+          >
+            <span v-if="!isRefreshing">↻ Vernieuwen</span>
+            <span v-else>Bezig…</span>
+          </button>
+          <button type="button" class="btn primary" @click="confirmLogout">Logout</button>
+        </div>
       </header>
 
-      <section id="orders" class="panel">
+      <section id="orders" class="panel" aria-labelledby="orders-title">
         <div class="panel-header">
-          <h2>Alle bestellingen</h2>
+          <h2 id="orders-title">Alle bestellingen</h2>
+        </div>
+
+        <!-- CONTROLES -->
+        <div class="controls" role="search">
+          <div class="search-input">
+            <span class="search-ico" aria-hidden="true">🔎</span>
+            <input
+              ref="search"
+              v-model.trim="query"
+              type="search"
+              :placeholder="placeholder"
+              inputmode="search"
+              aria-label="Zoek op klantnaam (exacte match)"
+              @input="debouncedFilter()"
+              @keydown.enter.prevent
+            />
+            <button
+              v-if="query"
+              class="btn-clear"
+              @click="clearSearch"
+              aria-label="Zoekopdracht wissen"
+            >
+              ✕
+            </button>
+          </div>
+          <div class="control-meta" role="status" aria-live="polite">
+            <template v-if="!query">
+              <span>Totaal: {{ totalCount }}</span>
+            </template>
+            <template v-else>
+              <span>
+                Naam-matches: <strong>{{ visibleCount }}</strong>
+                <span class="muted">van {{ totalCount }}</span>
+              </span>
+            </template>
+          </div>
+          <div class="control-actions">
+            <button class="btn ghost" @click="focusSearch" title="Sneltoets: /">/ Focus</button>
+            <button class="btn ghost" @click="scrollTo('orders')">Naar boven</button>
+          </div>
         </div>
 
         <!-- BELANGRIJK: alleen layout; functionaliteit <OrderList/> blijft identiek -->
-        <div class="panel-body orders-grid">
+        <div class="panel-body orders-grid" ref="ordersGrid">
           <OrderList />
+          <!-- Lege-staat voor wanneer er geen exacte naam-match is -->
+          <div v-if="query && visibleCount === 0" class="empty-state" aria-live="polite">
+            <div class="empty-emoji" aria-hidden="true">🧁</div>
+            <h3>Geen bestellingen voor “{{ query }}”</h3>
+            <p class="muted">Controleer de spelling of wis de zoekopdracht om alles te tonen.</p>
+            <button class="btn" @click="clearSearch">Alles weergeven</button>
+          </div>
         </div>
       </section>
 
@@ -68,19 +126,214 @@
 import OrderList from '../components/OrderList.vue'
 
 export default {
-  name: 'AdminView',
+  name: 'AdminViewPro',
   components: { OrderList },
   data() {
-    return { year: new Date().getFullYear() }
+    return {
+      year: new Date().getFullYear(),
+      query: '',
+      totalCount: 0,
+      visibleCount: 0,
+      isRefreshing: false,
+      debounceHandle: null,
+      _observer: null,
+    }
+  },
+  computed: {
+    placeholder() {
+      return 'Zoek op klantnaam (exacte match, druk / om te focussen)'
+    },
+  },
+  mounted() {
+    // Initialiseer filtering zodra OrderList in de DOM staat
+    this.$nextTick(() => {
+      this.indexOrders()
+      this.applyFilter()
+      this.observeOrderListMutations()
+    })
+  },
+  beforeUnmount() {
+    if (this._observer) this._observer.disconnect()
+    if (this.debounceHandle) clearTimeout(this.debounceHandle)
   },
   methods: {
-    logout() {
-      localStorage.removeItem('token')
-      this.$router.push('/login')
+    // ---------- UX ----------
+    confirmLogout() {
+      if (confirm('Weet je zeker dat je wilt uitloggen?')) {
+        localStorage.removeItem('token')
+        this.$router.push('/login')
+      }
+    },
+    refreshOrders() {
+      // UI feedback – echte data-refresh blijft bij <OrderList/>
+      this.isRefreshing = true
+      requestAnimationFrame(() => {
+        this.indexOrders()
+        this.applyFilter()
+        setTimeout(() => (this.isRefreshing = false), 350)
+      })
     },
     scrollTo(id) {
       const el = this.$el.querySelector(`#${id}`)
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    },
+    onGlobalHotkeys(e) {
+      if (e.key === '/') {
+        e.preventDefault()
+        this.focusSearch()
+      } else if (e.key === 'Escape' && this.query) {
+        this.clearSearch()
+      }
+    },
+    focusSearch() {
+      this.$refs.search?.focus()
+    },
+    clearSearch() {
+      this.query = ''
+      this.applyFilter()
+      this.focusSearch()
+    },
+    debouncedFilter() {
+      if (this.debounceHandle) clearTimeout(this.debounceHandle)
+      this.debounceHandle = setTimeout(() => this.applyFilter(), 120)
+    },
+
+    // ---------- Kern: DOM-gebaseerde naam-filter zonder OrderList te wijzigen ----------
+    // Selecteer alle potentiële order kaarten
+    getOrderCards() {
+      const root = this.$refs.ordersGrid
+      if (!root) return []
+      const selector = [
+        '.order',
+        '.order-item',
+        '.order-card',
+        '.list-item',
+        'article',
+        'section',
+        'li',
+      ]
+        .map((s) => `:scope ${s}`)
+        .join(',')
+
+      const nodes = Array.from(root.querySelectorAll(selector)).filter((el) => {
+        const rect = el.getBoundingClientRect()
+        return (
+          rect.width > 0 &&
+          rect.height > 0 &&
+          (el.innerText || el.textContent || '').trim().length > 0
+        )
+      })
+
+      return nodes
+    },
+
+    // Normaliseer voor robuuste, accent-ongevoelige vergelijkingen
+    norm(s) {
+      return (s || '')
+        .toString()
+        .normalize('NFD')
+        .replace(/\p{Diacritic}/gu, '')
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, ' ')
+    },
+
+    // Probeer klantnaam uit een kaart te halen via meerdere strategieën
+    extractCustomerName(card) {
+      // 1) Expliciete attributen/selectors
+      const byAttr = card.getAttribute('data-customer') || card.getAttribute('data-client') || null
+
+      if (byAttr) return byAttr
+
+      const sel = card.querySelector(
+        [
+          '.customer-name',
+          '.customer',
+          '[data-customer]',
+          '[data-client]',
+          '[aria-label*="Klant"]',
+          '[aria-label*="klant"]',
+          '[aria-labelledby*="klant"]',
+        ].join(','),
+      )
+      if (sel && (sel.innerText || sel.textContent)) {
+        return (sel.innerText || sel.textContent).trim()
+      }
+
+      // 2) Tekst-patronen in de kaart
+      const text = (card.innerText || card.textContent || '').trim()
+      // Veelvoorkomende labels: "Klant:", "Customer:", "Naam:"
+      const m =
+        text.match(/\b(?:Klant|Naam|Customer)\s*:\s*([^\n\r|•]+)/i) ||
+        text.match(/\bBesteller\s*:\s*([^\n\r|•]+)/i)
+      if (m && m[1]) return m[1].trim()
+
+      // 3) Fallback: eerste sterke/naam-achtige heading
+      const heading =
+        card.querySelector('header h4, h3, .title, strong, b') ||
+        card.querySelector('[role="heading"]')
+      if (heading) {
+        const guess = (heading.innerText || heading.textContent || '').trim()
+        // Heuristiek: twee woorden => waarschijnlijk naam
+        if (/\b\p{L}+\b\s+\b\p{L}+\b/u.test(guess)) return guess
+      }
+
+      return ''
+    },
+
+    // Indexeer kaarten + cache klantnaam en algemene zoektekst
+    indexOrders() {
+      const cards = this.getOrderCards()
+      cards.forEach((el) => {
+        const name = this.extractCustomerName(el)
+        el.__customerNameRaw = name
+        el.__customerName = this.norm(name)
+        el.__searchText = this.norm(el.innerText || el.textContent || '')
+      })
+      this.totalCount = cards.length
+      this.visibleCount = cards.filter((el) => !el.classList.contains('is-hidden')).length
+    },
+
+    // Toepassen van de naam-filter (exacte match, accent/hoofdletter-ongevoelig)
+    applyFilter() {
+      const cards = this.getOrderCards()
+      if (!cards.length) return
+
+      const q = this.norm(this.query)
+
+      if (!q) {
+        cards.forEach((el) => el.classList.remove('is-hidden'))
+        this.visibleCount = cards.length
+        return
+      }
+
+      let shown = 0
+
+      for (const el of cards) {
+        // Exacte match op klantnaam
+        const name = el.__customerName ?? this.norm(this.extractCustomerName(el))
+        const isExactNameMatch = name && name === q
+
+        // (optioneel) als er geen expliciete naam gevonden is, kun je fallbacken op algemene tekst
+        // maar we houden het strikt op naam zoals gevraagd:
+        const hit = isExactNameMatch
+
+        el.classList.toggle('is-hidden', !hit)
+        if (hit) shown++
+      }
+
+      this.visibleCount = shown
+    },
+
+    observeOrderListMutations() {
+      const root = this.$refs.ordersGrid
+      if (!root || this._observer) return
+      this._observer = new MutationObserver(() => {
+        // Wanneer OrderList wijzigt (laden/toevoegen/verwijderen), re-indexeer en her-filter
+        this.indexOrders()
+        this.applyFilter()
+      })
+      this._observer.observe(root, { childList: true, subtree: true, characterData: true })
     },
   },
 }
@@ -264,6 +517,10 @@ export default {
   color: var(--muted);
   font-size: 0.95rem;
 }
+.topbar-actions {
+  display: flex;
+  gap: 0.5rem;
+}
 
 /* ---------- Button ----------- */
 .btn {
@@ -300,9 +557,11 @@ export default {
 .btn.primary:active {
   transform: translateY(0);
 }
+.btn.ghost {
+  background: transparent;
+}
 
 /* ---------- Panel ---------- */
-/* Max-breedte loslaten zodat alles écht over het hele vlak kan */
 .panel {
   max-width: none;
   margin: 1.5rem 2rem 2rem;
@@ -322,7 +581,6 @@ export default {
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
-
 .panel-body {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -331,26 +589,78 @@ export default {
   padding: 1.5rem;
 }
 
+/* ---------- Controls (zoek/filter) ---------- */
+.controls {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  margin: 0 2rem 1rem;
+}
+.search-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.search-ico {
+  position: absolute;
+  left: 12px;
+  pointer-events: none;
+  opacity: 0.7;
+}
+.search-input input[type='search'] {
+  width: 100%;
+  appearance: none;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.7rem 2.2rem 0.7rem 2rem;
+  line-height: 1.3;
+  font-size: 1rem;
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+.search-input input:focus {
+  outline: none;
+  border-color: #c7d2fe;
+  box-shadow: var(--ring);
+}
+.btn-clear {
+  position: absolute;
+  right: 8px;
+  border: 0;
+  background: transparent;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.25rem 0.4rem;
+}
+.control-meta {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+.control-meta .muted {
+  color: var(--muted);
+}
+.control-actions {
+  display: flex;
+  gap: 8px;
+}
+
 /* =======================================================================
-   MEGA BREDE GRID VOOR ORDERLIJST
-   - vult het hele paneel
-   - grote, duidelijke kaarten
-   - responsive van 1 -> 5 kolommen
+   GRID VOOR ORDERLIJST
    ======================================================================= */
 .orders-grid {
   display: grid;
-  /* Grote cellen die prettig lezen; wordt 2-5 kolommen afhankelijk van breedte */
   grid-template-columns: repeat(auto-fill, minmax(460px, 1fr));
   gap: 24px;
   align-content: start;
 }
-
-/* Flatten eventuele wrapper(s) van <OrderList/> zodat de 'order cards' zelf grid-items worden */
 .orders-grid > * {
   display: contents;
 }
 
-/* Kaarten — zo breed mogelijk selecteren zodat het werkt ongeacht klassenaam */
+/* Kaarten — breed geselecteerd */
 .orders-grid :deep(.order),
 .orders-grid :deep(.order-item),
 .orders-grid :deep(.order-card),
@@ -368,8 +678,6 @@ export default {
   gap: 12px;
   min-height: 140px;
 }
-
-/* Typografie & spacing in de kaart */
 .orders-grid :deep(h3),
 .orders-grid :deep(.title),
 .orders-grid :deep(header h4) {
@@ -383,7 +691,7 @@ export default {
   font-size: 1rem;
 }
 
-/* Form controls in de kaart */
+/* Controls in kaart */
 .orders-grid :deep(select),
 .orders-grid :deep(input[type='text']),
 .orders-grid :deep(input[type='number']) {
@@ -405,7 +713,7 @@ export default {
   box-shadow: var(--ring);
 }
 
-/* Buttons in de kaart */
+/* Buttons in kaart */
 .orders-grid :deep(button) {
   appearance: none;
   border: 1px solid var(--border);
@@ -442,13 +750,29 @@ export default {
   font-weight: 700;
   text-decoration: none;
   border-bottom: 1px dashed rgba(37, 99, 235, 0.35);
-  transition:
-    color 120ms ease,
-    border-color 120ms ease;
 }
 .orders-grid :deep(a:hover) {
   color: var(--primary-600);
   border-color: rgba(37, 99, 235, 0.55);
+}
+
+/* Filter resultaat verbergen */
+.is-hidden {
+  display: none !important;
+}
+
+/* Lege-staat */
+.empty-state {
+  grid-column: 1 / -1;
+  border: 1px dashed var(--border);
+  border-radius: 16px;
+  padding: 2rem;
+  text-align: center;
+  background: var(--surface-2);
+}
+.empty-state .empty-emoji {
+  font-size: 2rem;
+  margin-bottom: 0.25rem;
 }
 
 /* ---------- Footer ---------- */
@@ -473,6 +797,11 @@ export default {
   }
   .panel {
     margin: 1rem 1.25rem 1.5rem;
+  }
+  .controls {
+    margin: 0 1.25rem 1rem;
+    grid-template-columns: 1fr auto;
+    grid-auto-flow: row;
   }
   .orders-grid {
     grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
