@@ -145,7 +145,6 @@ export default {
     },
   },
   mounted() {
-    // Initialiseer filtering zodra OrderList in de DOM staat
     this.$nextTick(() => {
       this.indexOrders()
       this.applyFilter()
@@ -165,7 +164,6 @@ export default {
       }
     },
     refreshOrders() {
-      // UI feedback – echte data-refresh blijft bij <OrderList/>
       this.isRefreshing = true
       requestAnimationFrame(() => {
         this.indexOrders()
@@ -198,36 +196,7 @@ export default {
       this.debounceHandle = setTimeout(() => this.applyFilter(), 120)
     },
 
-    // ---------- Kern: DOM-gebaseerde naam-filter zonder OrderList te wijzigen ----------
-    // Selecteer alle potentiële order kaarten
-    getOrderCards() {
-      const root = this.$refs.ordersGrid
-      if (!root) return []
-      const selector = [
-        '.order',
-        '.order-item',
-        '.order-card',
-        '.list-item',
-        'article',
-        'section',
-        'li',
-      ]
-        .map((s) => `:scope ${s}`)
-        .join(',')
-
-      const nodes = Array.from(root.querySelectorAll(selector)).filter((el) => {
-        const rect = el.getBoundingClientRect()
-        return (
-          rect.width > 0 &&
-          rect.height > 0 &&
-          (el.innerText || el.textContent || '').trim().length > 0
-        )
-      })
-
-      return nodes
-    },
-
-    // Normaliseer voor robuuste, accent-ongevoelige vergelijkingen
+    // ---------- Helpers ----------
     norm(s) {
       return (s || '')
         .toString()
@@ -238,13 +207,80 @@ export default {
         .replace(/\s+/g, ' ')
     },
 
-    // Probeer klantnaam uit een kaart te halen via meerdere strategieën
-    extractCustomerName(card) {
-      // 1) Expliciete attributen/selectors
-      const byAttr = card.getAttribute('data-customer') || card.getAttribute('data-client') || null
+    // Vind de visuele "kaart-root" (element dat de kaart effectief tekent)
+    findCardRoot(node, gridRoot) {
+      let el = node
+      const visited = new Set()
+      while (el && el !== gridRoot && el.nodeType === 1 && !visited.has(el)) {
+        visited.add(el)
+        const cs = getComputedStyle(el)
 
+        // Sla display: contents over
+        if (cs.display !== 'contents') {
+          const hasRadius =
+            parseFloat(cs.borderTopLeftRadius) >= 8 ||
+            parseFloat(cs.borderRadius) >= 8
+          const hasShadow = cs.boxShadow && cs.boxShadow !== 'none'
+          const hasBorder =
+            ['solid', 'dashed', 'double'].includes(cs.borderTopStyle) ||
+            ['solid', 'dashed', 'double'].includes(cs.borderLeftStyle)
+
+          const pad =
+            parseFloat(cs.paddingTop) +
+            parseFloat(cs.paddingRight) +
+            parseFloat(cs.paddingBottom) +
+            parseFloat(cs.paddingLeft)
+          const hasPadding = pad >= 8
+
+          // Opaque-ish background (indien rgba, alpha > 0.05)
+          const bg = cs.backgroundColor
+          const m = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([0-9.]+))?\)/i)
+          const alpha = m ? (m[4] === undefined ? 1 : parseFloat(m[4])) : 1
+          const opaqueBg = alpha > 0.05
+
+          const looksLikeCard = (hasShadow || hasRadius || hasBorder) && hasPadding && opaqueBg
+          if (looksLikeCard) return el
+        }
+
+        el = el.parentElement
+      }
+      return null
+    },
+
+    // Zoek alle kaart-root elementen binnen de grid (robuust, layout-onafhankelijk)
+    getOrderCards() {
+      const root = this.$refs.ordersGrid
+      if (!root) return []
+
+      const allNodes = Array.from(root.querySelectorAll('*'))
+      const cardSet = new Set()
+
+      for (const el of allNodes) {
+        const txt = (el.innerText || el.textContent || '').trim()
+        if (txt.length < 10) continue // te weinig inhoud om een kaart te zijn
+        const card = this.findCardRoot(el, root)
+        if (card) cardSet.add(card)
+      }
+
+      // zichtbare kaarten
+      const cards = Array.from(cardSet).filter((el) => {
+        const r = el.getBoundingClientRect()
+        return r.width > 0 && r.height > 0
+      })
+
+      return cards
+    },
+
+    // Probeer klantnaam uit een kaart te halen (selectors + patronen)
+    extractCustomerName(card) {
+      // 1) data-attribuut (snelste & meest betrouwbaar)
+      const byAttr =
+        card.getAttribute('data-customer') ||
+        card.getAttribute('data-client') ||
+        null
       if (byAttr) return byAttr
 
+      // 2) veelgebruikte velden
       const sel = card.querySelector(
         [
           '.customer-name',
@@ -254,47 +290,41 @@ export default {
           '[aria-label*="Klant"]',
           '[aria-label*="klant"]',
           '[aria-labelledby*="klant"]',
-        ].join(','),
+          'header h4',
+          'h3',
+          '.title',
+          'strong',
+          'b',
+          '[role="heading"]',
+        ].join(',')
       )
-      if (sel && (sel.innerText || sel.textContent)) {
-        return (sel.innerText || sel.textContent).trim()
+      if (sel) {
+        const guess = (sel.innerText || sel.textContent || '').trim()
+        if (/\b\p{L}+\b(?:\s+\p{L}+\b)+/u.test(guess)) return guess
       }
 
-      // 2) Tekst-patronen in de kaart
+      // 3) patronen in platte tekst
       const text = (card.innerText || card.textContent || '').trim()
-      // Veelvoorkomende labels: "Klant:", "Customer:", "Naam:"
       const m =
-        text.match(/\b(?:Klant|Naam|Customer)\s*:\s*([^\n\r|•]+)/i) ||
-        text.match(/\bBesteller\s*:\s*([^\n\r|•]+)/i)
+        text.match(/\b(?:Klant|Naam|Customer|Besteller)\s*:\s*([^\n\r|•]+)/i)
       if (m && m[1]) return m[1].trim()
-
-      // 3) Fallback: eerste sterke/naam-achtige heading
-      const heading =
-        card.querySelector('header h4, h3, .title, strong, b') ||
-        card.querySelector('[role="heading"]')
-      if (heading) {
-        const guess = (heading.innerText || heading.textContent || '').trim()
-        // Heuristiek: twee woorden => waarschijnlijk naam
-        if (/\b\p{L}+\b\s+\b\p{L}+\b/u.test(guess)) return guess
-      }
 
       return ''
     },
 
-    // Indexeer kaarten + cache klantnaam en algemene zoektekst
+    // Indexeer kaarten + cache klantnaam
     indexOrders() {
       const cards = this.getOrderCards()
       cards.forEach((el) => {
-        const name = this.extractCustomerName(el)
-        el.__customerNameRaw = name
-        el.__customerName = this.norm(name)
-        el.__searchText = this.norm(el.innerText || el.textContent || '')
+        const raw = this.extractCustomerName(el)
+        el.__customerNameRaw = raw
+        el.__customerName = this.norm(raw)
       })
       this.totalCount = cards.length
       this.visibleCount = cards.filter((el) => !el.classList.contains('is-hidden')).length
     },
 
-    // Toepassen van de naam-filter (exacte match, accent/hoofdletter-ongevoelig)
+    // Strikte naamfilter: alleen exacte matches blijven staan
     applyFilter() {
       const cards = this.getOrderCards()
       if (!cards.length) return
@@ -308,20 +338,12 @@ export default {
       }
 
       let shown = 0
-
       for (const el of cards) {
-        // Exacte match op klantnaam
         const name = el.__customerName ?? this.norm(this.extractCustomerName(el))
-        const isExactNameMatch = name && name === q
-
-        // (optioneel) als er geen expliciete naam gevonden is, kun je fallbacken op algemene tekst
-        // maar we houden het strikt op naam zoals gevraagd:
-        const hit = isExactNameMatch
-
+        const hit = name && name === q
         el.classList.toggle('is-hidden', !hit)
         if (hit) shown++
       }
-
       this.visibleCount = shown
     },
 
@@ -329,7 +351,6 @@ export default {
       const root = this.$refs.ordersGrid
       if (!root || this._observer) return
       this._observer = new MutationObserver(() => {
-        // Wanneer OrderList wijzigt (laden/toevoegen/verwijderen), re-indexeer en her-filter
         this.indexOrders()
         this.applyFilter()
       })
@@ -660,7 +681,7 @@ export default {
   display: contents;
 }
 
-/* Kaarten — breed geselecteerd */
+/* Kaarten — breed geselecteerd (maakt niet uit welke klassenaam OrderList gebruikt) */
 .orders-grid :deep(.order),
 .orders-grid :deep(.order-item),
 .orders-grid :deep(.order-card),
@@ -817,7 +838,6 @@ export default {
     height: auto;
     border-right: 0;
     border-bottom: 1px solid var(--border);
-    border-radius: 0 0 var(--radius) var(--radius);
   }
   .topbar {
     position: static;
