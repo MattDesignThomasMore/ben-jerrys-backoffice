@@ -72,7 +72,7 @@
               type="search"
               :placeholder="placeholder"
               inputmode="search"
-              aria-label="Zoek op klantnaam (exacte match)"
+              aria-label="Zoek op klantnaam"
               @input="debouncedFilter()"
               @keydown.enter.prevent
             />
@@ -90,10 +90,10 @@
               <span>Totaal: {{ totalCount }}</span>
             </template>
             <template v-else>
-              <span>
-                Naam-matches: <strong>{{ visibleCount }}</strong>
-                <span class="muted">van {{ totalCount }}</span>
-              </span>
+              <span
+                >Naam-matches: <strong>{{ visibleCount }}</strong>
+                <span class="muted">van {{ totalCount }}</span></span
+              >
             </template>
           </div>
           <div class="control-actions">
@@ -102,10 +102,9 @@
           </div>
         </div>
 
-        <!-- BELANGRIJK: alleen layout; functionaliteit <OrderList/> blijft identiek -->
+        <!-- LAYOUT; <OrderList/> blijft identiek -->
         <div class="panel-body orders-grid" ref="ordersGrid">
           <OrderList />
-          <!-- Lege-staat voor wanneer er geen exacte naam-match is -->
           <div v-if="query && visibleCount === 0" class="empty-state" aria-live="polite">
             <div class="empty-emoji" aria-hidden="true">🧁</div>
             <h3>Geen bestellingen voor “{{ query }}”</h3>
@@ -140,8 +139,9 @@ export default {
     }
   },
   computed: {
+    // Deel of volledige naam; ="..." of "..." voor exacte match
     placeholder() {
-      return 'Zoek op klantnaam (exacte match, druk / om te focussen)'
+      return 'Zoek op klantnaam (deel of volledig; ="Naam" of "Naam" voor exact; / om te focussen)'
     },
   },
   mounted() {
@@ -156,7 +156,7 @@ export default {
     if (this.debounceHandle) clearTimeout(this.debounceHandle)
   },
   methods: {
-    // ---------- UX ----------
+    /* ---------- UX ---------- */
     confirmLogout() {
       if (confirm('Weet je zeker dat je wilt uitloggen?')) {
         localStorage.removeItem('token')
@@ -193,10 +193,10 @@ export default {
     },
     debouncedFilter() {
       if (this.debounceHandle) clearTimeout(this.debounceHandle)
-      this.debounceHandle = setTimeout(() => this.applyFilter(), 120)
+      this.debounceHandle = setTimeout(() => this.applyFilter(), 100)
     },
 
-    // ---------- Helpers ----------
+    /* ---------- Helpers ---------- */
     norm(s) {
       return (s || '')
         .toString()
@@ -207,24 +207,20 @@ export default {
         .replace(/\s+/g, ' ')
     },
 
-    // Vind de visuele "kaart-root" (element dat de kaart effectief tekent)
+    // Bepaal een kaart-root op basis van visuele kenmerken (radius/schaduw/border)
     findCardRoot(node, gridRoot) {
       let el = node
       const visited = new Set()
       while (el && el !== gridRoot && el.nodeType === 1 && !visited.has(el)) {
         visited.add(el)
         const cs = getComputedStyle(el)
-
-        // Sla display: contents over
         if (cs.display !== 'contents') {
           const hasRadius =
-            parseFloat(cs.borderTopLeftRadius) >= 8 ||
-            parseFloat(cs.borderRadius) >= 8
+            parseFloat(cs.borderTopLeftRadius) >= 8 || parseFloat(cs.borderRadius) >= 8
           const hasShadow = cs.boxShadow && cs.boxShadow !== 'none'
           const hasBorder =
             ['solid', 'dashed', 'double'].includes(cs.borderTopStyle) ||
             ['solid', 'dashed', 'double'].includes(cs.borderLeftStyle)
-
           const pad =
             parseFloat(cs.paddingTop) +
             parseFloat(cs.paddingRight) +
@@ -232,7 +228,6 @@ export default {
             parseFloat(cs.paddingLeft)
           const hasPadding = pad >= 8
 
-          // Opaque-ish background (indien rgba, alpha > 0.05)
           const bg = cs.backgroundColor
           const m = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([0-9.]+))?\)/i)
           const alpha = m ? (m[4] === undefined ? 1 : parseFloat(m[4])) : 1
@@ -241,46 +236,31 @@ export default {
           const looksLikeCard = (hasShadow || hasRadius || hasBorder) && hasPadding && opaqueBg
           if (looksLikeCard) return el
         }
-
         el = el.parentElement
       }
       return null
     },
 
-    // Zoek alle kaart-root elementen binnen de grid (robuust, layout-onafhankelijk)
+    // ⚠️ Altijd ALLE kaarten verzamelen (óók verborgen), zodat filter steeds werkt
     getOrderCards() {
       const root = this.$refs.ordersGrid
       if (!root) return []
-
       const allNodes = Array.from(root.querySelectorAll('*'))
       const cardSet = new Set()
-
       for (const el of allNodes) {
         const txt = (el.innerText || el.textContent || '').trim()
-        if (txt.length < 10) continue // te weinig inhoud om een kaart te zijn
+        if (txt.length < 10) continue
         const card = this.findCardRoot(el, root)
         if (card) cardSet.add(card)
       }
-
-      // zichtbare kaarten
-      const cards = Array.from(cardSet).filter((el) => {
-        const r = el.getBoundingClientRect()
-        return r.width > 0 && r.height > 0
-      })
-
-      return cards
+      return Array.from(cardSet) // geen zichtbaarheid-filter meer!
     },
 
-    // Probeer klantnaam uit een kaart te halen (selectors + patronen)
+    // Haal klantnaam uit kaart (data-attribuut, veelvoorkomende selectors, fallback regex)
     extractCustomerName(card) {
-      // 1) data-attribuut (snelste & meest betrouwbaar)
-      const byAttr =
-        card.getAttribute('data-customer') ||
-        card.getAttribute('data-client') ||
-        null
+      const byAttr = card.getAttribute('data-customer') || card.getAttribute('data-client') || null
       if (byAttr) return byAttr
 
-      // 2) veelgebruikte velden
       const sel = card.querySelector(
         [
           '.customer-name',
@@ -296,23 +276,21 @@ export default {
           'strong',
           'b',
           '[role="heading"]',
-        ].join(',')
+        ].join(','),
       )
       if (sel) {
         const guess = (sel.innerText || sel.textContent || '').trim()
         if (/\b\p{L}+\b(?:\s+\p{L}+\b)+/u.test(guess)) return guess
       }
 
-      // 3) patronen in platte tekst
       const text = (card.innerText || card.textContent || '').trim()
-      const m =
-        text.match(/\b(?:Klant|Naam|Customer|Besteller)\s*:\s*([^\n\r|•]+)/i)
+      const m = text.match(/\b(?:Klant|Naam|Customer|Besteller)\s*:\s*([^\n\r|•]+)/i)
       if (m && m[1]) return m[1].trim()
 
       return ''
     },
 
-    // Indexeer kaarten + cache klantnaam
+    // Indexeer één keer of bij mutaties
     indexOrders() {
       const cards = this.getOrderCards()
       cards.forEach((el) => {
@@ -321,32 +299,64 @@ export default {
         el.__customerName = this.norm(raw)
       })
       this.totalCount = cards.length
-      this.visibleCount = cards.filter((el) => !el.classList.contains('is-hidden')).length
+      // visibleCount wordt in applyFilter() gezet
     },
 
-    // Strikte naamfilter: alleen exacte matches blijven staan
+    // Deel-match standaard, exacte match met ="..." of "..."
     applyFilter() {
       const cards = this.getOrderCards()
-      if (!cards.length) return
+      const rawQ = (this.query || '').trim()
+      const qNormalized = this.norm(rawQ)
 
-      const q = this.norm(this.query)
-
-      if (!q) {
-        cards.forEach((el) => el.classList.remove('is-hidden'))
+      // Alles tonen wanneer leeg
+      if (!qNormalized) {
+        for (const el of cards) {
+          el.classList.remove('is-hidden')
+          el.hidden = false
+          el.setAttribute('aria-hidden', 'false')
+        }
         this.visibleCount = cards.length
         return
       }
 
+      // Exacte modus? (= of quotes)
+      let exact = false
+      let qExact = qNormalized
+      if (rawQ.startsWith('=') && rawQ.length > 1) {
+        exact = true
+        qExact = this.norm(rawQ.slice(1))
+      } else if (
+        (rawQ.startsWith('"') && rawQ.endsWith('"') && rawQ.length > 1) ||
+        (rawQ.startsWith('“') && rawQ.endsWith('”') && rawQ.length > 1)
+      ) {
+        exact = true
+        qExact = this.norm(rawQ.slice(1, -1))
+      }
+
+      const tokens = exact ? [] : qNormalized.split(' ').filter(Boolean)
+
       let shown = 0
       for (const el of cards) {
         const name = el.__customerName ?? this.norm(this.extractCustomerName(el))
-        const hit = name && name === q
-        el.classList.toggle('is-hidden', !hit)
+
+        let hit = false
+        if (exact) {
+          hit = !!name && name === qExact
+        } else {
+          // AND op tokens: alle woorden moeten voorkomen
+          hit = !!name && tokens.every((t) => name.includes(t))
+        }
+
+        el.classList.toggle('is-hidden', !hit) // CSS fallback
+        el.hidden = !hit // native hide
+        el.setAttribute('aria-hidden', hit ? 'false' : 'true')
+
         if (hit) shown++
       }
       this.visibleCount = shown
     },
 
+    // Volg wijzigingen in de lijst
     observeOrderListMutations() {
       const root = this.$refs.ordersGrid
       if (!root || this._observer) return
@@ -404,7 +414,6 @@ export default {
   flex-direction: column;
   gap: 1rem;
 }
-
 .brand {
   display: flex;
   align-items: center;
@@ -543,7 +552,7 @@ export default {
   gap: 0.5rem;
 }
 
-/* ---------- Button ----------- */
+/* ---------- Buttons ---------- */
 .btn {
   appearance: none;
   border: 1px solid var(--border);
@@ -681,7 +690,7 @@ export default {
   display: contents;
 }
 
-/* Kaarten — breed geselecteerd (maakt niet uit welke klassenaam OrderList gebruikt) */
+/* Kaarten — breed geselecteerd */
 .orders-grid :deep(.order),
 .orders-grid :deep(.order-item),
 .orders-grid :deep(.order-card),
@@ -765,20 +774,8 @@ export default {
   color: var(--danger);
 }
 
-/* Links */
-.orders-grid :deep(a) {
-  color: var(--primary);
-  font-weight: 700;
-  text-decoration: none;
-  border-bottom: 1px dashed rgba(37, 99, 235, 0.35);
-}
-.orders-grid :deep(a:hover) {
-  color: var(--primary-600);
-  border-color: rgba(37, 99, 235, 0.55);
-}
-
-/* Filter resultaat verbergen */
-.is-hidden {
+/* Verberg via klasse (werkt ook met scoped door :deep) */
+.orders-grid :deep(.is-hidden) {
   display: none !important;
 }
 
