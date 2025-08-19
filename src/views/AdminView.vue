@@ -438,7 +438,7 @@ export default {
 
 @media (prefers-color-scheme: dark) {
   .admin-shell {
-    --text: #e6eef6;
+    --text: #000000;
     --muted: #a9bbcf;
 
     --surface: #0f1723;
@@ -446,11 +446,11 @@ export default {
     --surface-3: #0e1a2b;
     --border: #203048;
 
-    --primary: #9bd8ff;
+    --primary: #000000;
     --primary-contrast: #0a243e;
 
-    --ring: 0 0 0 4px rgba(110, 207, 246, 0.35);
-    --ring-strong: 0 0 0 4px rgba(110, 207, 246, 0.45);
+    --ring: 0 0 0 4px rgba(0, 0, 0, 0.35);
+    --ring-strong: 0 0 0 4px rgba(0, 0, 0, 0.45);
 
     color-scheme: dark;
   }
@@ -462,7 +462,7 @@ export default {
   display: grid;
   grid-template-columns: 300px 1fr;
   background:
-    radial-gradient(120% 70% at 0% 0%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0) 50%),
+    white,
     radial-gradient(80% 48% at 100% 0%, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0) 45%),
     linear-gradient(180deg, #b8e9fb 0%, #e0f6ff 45%, #ffffff 100%);
   color: var(--text);
@@ -512,19 +512,18 @@ export default {
   position: sticky;
   top: 0;
   height: 100vh;
-  background: radial-gradient(100% 100% at 0% 0%, #ffffff 0%, #fff6fb 100%);
-  border-right: 3px solid #d9ecff;
+  background: #ffffff;
+  border-right: 3px solid #eeeeee;
   padding: 1.25rem 1rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  backdrop-filter: saturate(135%) blur(4px);
 }
 
 @media (prefers-color-scheme: dark) {
   .sidebar {
     background: linear-gradient(180deg, #0c1524, #0a1220);
-    border-right-color: #183252;
+    border-right-color: #000000;
   }
 }
 
@@ -558,7 +557,7 @@ export default {
   display: block;
 }
 .brand-text span {
-  color: #093a6b;
+  color: #000000;
   font-weight: 700;
   opacity: 0.85;
 }
@@ -578,7 +577,7 @@ export default {
   border-radius: 16px;
   border: 2px solid transparent;
   background: var(--surface);
-  color: #163b69;
+  color: #000000;
   cursor: pointer;
   font-weight: 800;
   transition:
@@ -589,15 +588,15 @@ export default {
 }
 .nav-item:hover {
   background: #f2fbff;
-  border-color: #cfeefe;
+  border-color: #000000;
   transform: translateX(4px);
   box-shadow: var(--shadow-xs);
 }
 .nav-item.active,
 .nav-item[aria-current='page'] {
-  border-color: #b6e7ff;
+  border-color: #1d4754;
   background: linear-gradient(180deg, #fff, #f2faff);
-  box-shadow: 0 8px 24px rgba(120, 194, 255, 0.18);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
 }
 .nav-item[disabled] {
   opacity: 0.5;
