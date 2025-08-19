@@ -3,7 +3,14 @@
     <!-- Sidebar -->
     <aside class="sidebar" aria-label="Hoofdnavigatie">
       <div class="brand" aria-label="Merk en omgeving">
-        <span class="logo" aria-hidden="true">🍦</span>
+        <span class="logo" aria-hidden="true">
+          <img
+            src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS5qSSSB_FtpaYm4-ETjGLbkpmDbHX45ewlIw&s"
+            alt="Logo"
+            style="width: 1.5em; height: 1.5em; vertical-align: middle"
+          />
+        </span>
+
         <div class="brand-text">
           <strong>Ben &amp; Jerry’s</strong>
           <span>Backoffice</span>
