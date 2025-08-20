@@ -1,6 +1,5 @@
 <template>
   <div>
-
     <p v-if="error" class="error">{{ error }}</p>
 
     <OrderCard v-for="order in orders" :key="order._id" :order="order" @refresh="fetchOrders" />

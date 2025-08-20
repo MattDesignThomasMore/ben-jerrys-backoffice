@@ -1,8 +1,6 @@
-// src/main.js
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
-
 
 const token = localStorage.getItem('token')
 if (token) {
@@ -14,7 +12,7 @@ if (token) {
       console.warn('🔒 JWT-token verlopen en verwijderd.')
     }
   } catch (e) {
-    localStorage.removeItem('token') // als token corrupt is
+    localStorage.removeItem('token')
     console.warn('🔒 Ongeldige token verwijderd.')
   }
 }

@@ -2,7 +2,8 @@
   <div class="order-card">
     <h3>{{ order.name }}</h3>
     <p>{{ order.flavor }} met {{ order.topping }}</p>
-    <p>Status:
+    <p>
+      Status:
       <select v-model="selectedStatus" @change="updateStatus">
         <option value="te verwerken">Te verwerken</option>
         <option value="verzonden">Verzonden</option>
@@ -18,12 +19,12 @@
 export default {
   name: 'OrderCard',
   props: {
-    order: Object
+    order: Object,
   },
   data() {
     return {
-      selectedStatus: this.order.status
-    };
+      selectedStatus: this.order.status,
+    }
   },
   methods: {
     async updateStatus() {
@@ -32,16 +33,16 @@ export default {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: 'Bearer ' + localStorage.getItem('token')
+            Authorization: 'Bearer ' + localStorage.getItem('token'),
           },
-          body: JSON.stringify({ status: this.selectedStatus })
-        });
+          body: JSON.stringify({ status: this.selectedStatus }),
+        })
 
-        if (!res.ok) throw new Error('Update mislukt');
+        if (!res.ok) throw new Error('Update mislukt')
 
-        this.$emit('refresh');
+        this.$emit('refresh')
       } catch (err) {
-        console.error('Update-fout:', err);
+        console.error('Update-fout:', err)
       }
     },
     async deleteOrder() {
@@ -49,17 +50,17 @@ export default {
         const res = await fetch(`http://localhost:5000/api/orders/${this.order._id}`, {
           method: 'DELETE',
           headers: {
-            Authorization: 'Bearer ' + localStorage.getItem('token')
-          }
-        });
+            Authorization: 'Bearer ' + localStorage.getItem('token'),
+          },
+        })
 
-        if (!res.ok) throw new Error('Verwijderen mislukt');
+        if (!res.ok) throw new Error('Verwijderen mislukt')
 
-        this.$emit('refresh');
+        this.$emit('refresh')
       } catch (err) {
-        console.error('Verwijder-fout:', err);
+        console.error('Verwijder-fout:', err)
       }
-    }
-  }
-};
+    },
+  },
+}
 </script>

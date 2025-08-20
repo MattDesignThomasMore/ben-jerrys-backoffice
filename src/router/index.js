@@ -1,40 +1,35 @@
-import { createRouter, createWebHistory } from 'vue-router';
-import AdminView from '../views/AdminView.vue';
-import OrderDetail from '../views/OrderDetail.vue';
-import LoginView from '../views/LoginView.vue';
+import { createRouter, createWebHistory } from 'vue-router'
+import AdminView from '../views/AdminView.vue'
+import OrderDetail from '../views/OrderDetail.vue'
+import LoginView from '../views/LoginView.vue'
 
 const routes = [
- 
   { path: '/', redirect: '/login' },
-
 
   { path: '/login', name: 'Login', component: LoginView },
 
   { path: '/admin', name: 'Admin', component: AdminView },
 
-  { path: '/admin/order/:id', name: 'OrderDetail', component: OrderDetail }
-];
+  { path: '/admin/order/:id', name: 'OrderDetail', component: OrderDetail },
+]
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
-});
-
+  routes,
+})
 
 router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('token')
 
-  // Als gebruiker niet ingelogd is en probeert naar iets anders dan /login te gaan
   if (to.path !== '/login' && !token) {
-    return next('/login');
+    return next('/login')
   }
 
-  // Als gebruiker al ingelogd is en naar
   if (to.path === '/login' && token) {
-    return next('/admin');
+    return next('/admin')
   }
 
-  next();
-});
+  next()
+})
 
-export default router;
+export default router

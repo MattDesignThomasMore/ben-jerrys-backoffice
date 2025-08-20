@@ -48,7 +48,6 @@
 
           <button type="submit">Login</button>
 
-          <!-- subtiele disclaimer onder de knop -->
           <p class="admin-note">
             Alleen voor beheerders · gekoppeld aan de Ben &amp; Jerry’s Ice Configurator. Klanten
             bestellen via de configurator.
@@ -96,7 +95,6 @@ export default {
 </script>
 
 <style scoped>
-/* === Vaste canvas — geen scrollbars === */
 .login-page {
   position: fixed;
   inset: 0;
@@ -139,10 +137,9 @@ h2 {
   font-size: 2rem;
   font-weight: 700;
   color: #2e3a59;
-  margin-bottom: 2rem; /* <-- hier meer ruimte, was 0.5rem */
+  margin-bottom: 2rem;
 }
 
-/* Subtiele backoffice vermelding */
 .subtle-note {
   text-align: center;
   font-size: 0.9rem;
@@ -150,7 +147,6 @@ h2 {
   margin-bottom: 1.6rem;
 }
 
-/* Form */
 form {
   display: flex;
   flex-direction: column;
@@ -227,12 +223,11 @@ button:hover {
   box-shadow: 0 10px 30px rgba(79, 172, 254, 0.35);
 }
 
-/* Subtiele disclaimer onder knop */
 .admin-note {
   margin-top: 0.6rem;
   font-size: 0.8rem;
   text-align: center;
-  color: #9ca3af; /* lichter grijs */
+  color: #9ca3af;
   line-height: 1.35;
 }
 

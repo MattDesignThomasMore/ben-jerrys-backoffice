@@ -1,216 +1,223 @@
 <template>
-  <div class="admin-shell" @keydown="onGlobalHotkeys">
-    <!-- Sidebar -->
-    <aside class="sidebar" aria-label="Hoofdnavigatie">
-      <div class="brand" aria-label="Merk en omgeving">
-        <span class="logo" aria-hidden="true">
-          <img
-            src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS5qSSSB_FtpaYm4-ETjGLbkpmDbHX45ewlIw&s"
-            alt="Logo"
-            style="width: 1.5em; height: 1.5em; vertical-align: middle"
-          />
-        </span>
+  <div
+    class="admin-scene"
+    @mousemove="onParallax"
+    :class="{ 'reduced-motion': prefersReducedMotion }"
+    @keydown="onGlobalHotkeys"
+  >
+    <a href="#orders" class="skip-link">Overslaan naar hoofdinhoud</a>
 
-        <div class="brand-text">
-          <strong>Ben &amp; Jerry’s</strong>
-          <span>Backoffice</span>
-        </div>
-      </div>
+    <div class="bg-layer bg-1" aria-hidden="true"></div>
+    <div class="bg-layer bg-2" aria-hidden="true"></div>
+    <div class="bg-layer bg-3" aria-hidden="true"></div>
+    <div class="cloud cloud-1" aria-hidden="true"></div>
+    <div class="cloud cloud-2" aria-hidden="true"></div>
+    <div class="cloud cloud-3" aria-hidden="true"></div>
 
-      <nav class="nav" role="navigation">
-        <button
-          type="button"
-          class="nav-item active"
-          aria-current="page"
-          @click="scrollTo('orders')"
-        >
-          <span class="nav-ico" aria-hidden="true">📦</span>
-          <span class="nav-label">Bestellingen</span>
-        </button>
+    <div class="admin-shell">
+      <aside class="sidebar" aria-label="Hoofdnavigatie">
+        <div class="brand" aria-label="Merk en omgeving">
+          <span class="logo" aria-hidden="true">
+            <img
+              src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS5qSSSB_FtpaYm4-ETjGLbkpmDbHX45ewlIw&s"
+              alt="Logo"
+              style="width: 1.5em; height: 1.5em; vertical-align: middle"
+            />
+          </span>
 
-        <button type="button" class="nav-item" disabled>
-          <span class="nav-ico" aria-hidden="true">📊</span>
-          <span class="nav-label">Rapporten</span>
-          <span class="badge">binnenkort</span>
-        </button>
-
-        <button type="button" class="nav-item" disabled>
-          <span class="nav-ico" aria-hidden="true">⚙️</span>
-          <span class="nav-label">Instellingen</span>
-        </button>
-
-        <button type="button" class="nav-item" disabled>
-          <span class="nav-ico" aria-hidden="true">❓</span>
-          <span class="nav-label">Help</span>
-        </button>
-      </nav>
-
-      <div class="sidebar-spacer" aria-hidden="true"></div>
-    </aside>
-
-    <!-- Content -->
-    <main class="content">
-      <header class="topbar" role="banner">
-        <div class="title-wrap">
-          <h1 class="topbar-title">Adminpaneel</h1>
+          <div class="brand-text">
+            <strong>Ben &amp; Jerry’s</strong>
+            <span>Backoffice</span>
+          </div>
         </div>
 
-        <div class="topbar-actions only-desktop">
+        <nav class="nav" role="navigation">
           <button
             type="button"
-            class="refresh-link"
-            @click="refreshOrders"
-            :aria-busy="isRefreshing ? 'true' : 'false'"
-            :aria-label="isRefreshing ? 'Lijst vernieuwen bezig' : 'Vernieuwen'"
+            class="nav-item active"
+            aria-current="page"
+            @click="scrollTo('orders')"
           >
-            <span class="refresh-ico" :class="{ 'is-rotating': isRefreshing }" aria-hidden="true"
-              >↻</span
-            >
-            <span v-if="!isRefreshing">Vernieuwen</span>
-            <span v-else>Bezig…</span>
+            <span class="nav-ico" aria-hidden="true">📦</span>
+            <span class="nav-label">Bestellingen</span>
           </button>
 
-          <button type="button" class="btn logout" @click="confirmLogout">Logout</button>
-        </div>
-      </header>
+          <button type="button" class="nav-item" disabled>
+            <span class="nav-ico" aria-hidden="true">📊</span>
+            <span class="nav-label">Rapporten</span>
+            <span class="badge">binnenkort</span>
+          </button>
 
-      <section id="orders" class="panel" aria-label="Bestellingen">
-        <!-- Header: zoekbalk + filters -->
-        <div class="panel-header">
-          <div class="controls controls--inline" role="search" aria-label="Zoeken en acties">
-            <div class="search-input">
-              <span class="search-ico" aria-hidden="true">🔎</span>
-              <input
-                ref="search"
-                v-model.trim="query"
-                type="search"
-                :placeholder="placeholder"
-                inputmode="search"
-                autocomplete="off"
-                autocapitalize="off"
-                spellcheck="false"
-                aria-label="Zoek op klantnaam"
-                @input="debouncedFilter()"
-                @keydown.enter.prevent
-              />
-              <button
-                v-if="query"
-                class="btn-clear"
-                @click="clearSearch"
-                aria-label="Zoekopdracht wissen"
-                title="Wissen (Esc)"
-              >
-                ✕
-              </button>
-            </div>
+          <button type="button" class="nav-item" disabled>
+            <span class="nav-ico" aria-hidden="true">⚙️</span>
+            <span class="nav-label">Instellingen</span>
+          </button>
 
-            <div class="filters" role="group" aria-label="Filters">
-              <label class="select">
-                <span class="sr">Statusfilter</span>
-                <select v-model="statusFilter" @change="applyFilter" aria-label="Filter op status">
-                  <option value="">Alle statussen</option>
-                  <option value="te verwerken">Te verwerken</option>
-                  <option value="verzonden">Verzonden</option>
-                  <option value="geannuleerd">Geannuleerd</option>
-                </select>
-              </label>
+          <button type="button" class="nav-item" disabled>
+            <span class="nav-ico" aria-hidden="true">❓</span>
+            <span class="nav-label">Help</span>
+          </button>
+        </nav>
 
-              <label class="select">
-                <span class="sr">Sorteren</span>
-                <select v-model="sortBy" @change="applySort" aria-label="Sorteer volgorde">
-                  <option value="none">Sorteer: —</option>
-                  <option value="name-asc">Naam A → Z</option>
-                  <option value="name-desc">Naam Z → A</option>
-                </select>
-              </label>
-            </div>
+        <div class="sidebar-spacer" aria-hidden="true"></div>
+      </aside>
 
-            <div class="control-meta" role="status" aria-live="polite">
-              <template v-if="!query && !statusFilter">
-                <span>Totaal: {{ totalCount }}</span>
-              </template>
-              <template v-else>
-                <span>
-                  Zichtbaar: <strong>{{ visibleCount }}</strong>
-                  <span class="muted">van {{ totalCount }}</span>
-                </span>
-              </template>
-            </div>
-
-            <div class="control-actions">
-              <button class="btn ghost" @click="focusSearch" title="Sneltoets: /">/ Focus</button>
-              <button class="btn ghost" @click="scrollToBottom">Naar beneden</button>
-            </div>
+      <main class="content">
+        <header class="topbar" role="banner">
+          <div class="title-wrap">
+            <h1 class="topbar-title">Adminpaneel</h1>
           </div>
-        </div>
 
-        <!-- Lijsttitel -->
-        <div class="panel-subheader sticky" :class="{ 'has-filter': !!statusFilter || !!query }">
-          <div class="subheader-dot" aria-hidden="true">•</div>
-          <h2 class="subheader-title">Alle bestellingen</h2>
-          <div v-if="activeChips.length" class="chips" role="list" aria-label="Actieve filters">
+          <div class="topbar-actions only-desktop">
             <button
-              v-for="chip in activeChips"
-              :key="chip.key"
-              class="chip"
-              role="listitem"
-              @click="chip.onClear()"
-              :aria-label="chip.aria"
-              title="Filter verwijderen"
+              type="button"
+              class="refresh-link"
+              @click="refreshOrders"
+              :aria-busy="isRefreshing ? 'true' : 'false'"
+              :aria-label="isRefreshing ? 'Lijst vernieuwen bezig' : 'Vernieuwen'"
+              title="Vernieuwen"
             >
-              {{ chip.label }} ✕
+              <span class="refresh-ico" :class="{ 'is-rotating': isRefreshing }" aria-hidden="true"
+                >↻</span
+              >
+              <span v-if="!isRefreshing">Vernieuwen</span>
+              <span v-else>Bezig…</span>
             </button>
+
+            <button type="button" class="btn logout" @click="confirmLogout">Logout</button>
           </div>
-        </div>
+        </header>
 
-        <!-- Orders lijst -->
-        <div class="panel-body">
-          <!-- Kolomkoppen -->
-          <div class="table-head" role="row" aria-hidden="true">
-            <div class="th th--customer">Klant</div>
-            <div class="th th--details">Omschrijving</div>
-            <div class="th th--status">Status</div>
-            <div class="th th--actions">Acties</div>
-          </div>
+        <section id="orders" class="panel" aria-label="Bestellingen">
+          <div class="panel-header">
+            <div class="controls controls--inline" role="search" aria-label="Zoeken en acties">
+              <div class="search-input">
+                <span class="search-ico" aria-hidden="true">🔎</span>
+                <input
+                  ref="search"
+                  v-model.trim="query"
+                  type="search"
+                  :placeholder="placeholder"
+                  inputmode="search"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  aria-label="Zoek op klantnaam"
+                  @input="debouncedFilter()"
+                  @keydown.enter.prevent
+                />
+                <button
+                  v-if="query"
+                  class="btn-clear"
+                  @click="clearSearch"
+                  aria-label="Zoekopdracht wissen"
+                  title="Wissen (Esc)"
+                >
+                  ✕
+                </button>
+              </div>
 
-          <!-- Inhoud -->
-          <div class="orders-grid" ref="ordersGrid">
-            <!--
-              Tip voor 100% deterministische matching:
-              Render in OrderList elk item als wrapper met role="row"
-              + data-customer="Naam" + data-status="te verwerken|verzonden|geannuleerd".
-            -->
-            <OrderList />
+              <div class="filters" role="group" aria-label="Filters">
+                <label class="select">
+                  <span class="sr">Statusfilter</span>
+                  <select
+                    v-model="statusFilter"
+                    @change="applyFilter"
+                    aria-label="Filter op status"
+                  >
+                    <option value="">Alle statussen</option>
+                    <option value="te verwerken">Te verwerken</option>
+                    <option value="verzonden">Verzonden</option>
+                    <option value="geannuleerd">Geannuleerd</option>
+                  </select>
+                </label>
 
-            <!-- Lege-staat -->
-            <div
-              v-if="(query || statusFilter) && visibleCount === 0"
-              class="empty-state"
-              aria-live="polite"
-            >
-              <div class="empty-emoji" aria-hidden="true">🧁</div>
-              <h3>Geen resultaten</h3>
-              <p class="muted">Pas filters aan of wis je zoekopdracht om alles te tonen.</p>
-              <div class="empty-actions">
-                <button class="btn" @click="clearFilters">Filters wissen</button>
-                <button class="btn primary" @click="clearSearch">Zoekopdracht wissen</button>
+                <label class="select">
+                  <span class="sr">Sorteren</span>
+                  <select v-model="sortBy" @change="applySort" aria-label="Sorteer volgorde">
+                    <option value="none">Sorteer: —</option>
+                    <option value="name-asc">Naam A → Z</option>
+                    <option value="name-desc">Naam Z → A</option>
+                  </select>
+                </label>
+              </div>
+
+              <div class="control-meta" role="status" aria-live="polite">
+                <template v-if="!query && !statusFilter">
+                  <span>Totaal: {{ totalCount }}</span>
+                </template>
+                <template v-else>
+                  <span>
+                    Zichtbaar: <strong>{{ visibleCount }}</strong>
+                    <span class="muted">van {{ totalCount }}</span>
+                  </span>
+                </template>
+              </div>
+
+              <div class="control-actions">
+                <button class="btn ghost" @click="focusSearch" title="Sneltoets: /">/ Focus</button>
+                <button class="btn ghost" @click="scrollToBottom">Naar beneden</button>
               </div>
             </div>
           </div>
-        </div>
-      </section>
 
-      <footer class="footer">
-        <span>© {{ year }} Ben &amp; Jerry’s – Backoffice</span>
-      </footer>
-    </main>
+          <div class="panel-subheader sticky" :class="{ 'has-filter': !!statusFilter || !!query }">
+            <div class="subheader-dot" aria-hidden="true">•</div>
+            <h2 class="subheader-title">Alle bestellingen</h2>
+            <div v-if="activeChips.length" class="chips" role="list" aria-label="Actieve filters">
+              <button
+                v-for="chip in activeChips"
+                :key="chip.key"
+                class="chip"
+                role="listitem"
+                @click="chip.onClear()"
+                :aria-label="chip.aria"
+                title="Filter verwijderen"
+              >
+                {{ chip.label }} ✕
+              </button>
+            </div>
+          </div>
+
+          <div class="panel-body">
+            <div class="table-head" role="row" aria-hidden="true">
+              <div class="th th--customer">Klant</div>
+              <div class="th th--details">Omschrijving</div>
+              <div class="th th--status">Status</div>
+              <div class="th th--actions">Acties</div>
+            </div>
+
+            <div class="orders-grid" ref="ordersGrid">
+              <OrderList />
+
+              <div
+                v-if="(query || statusFilter) && visibleCount === 0"
+                class="empty-state"
+                aria-live="polite"
+              >
+                <div class="empty-emoji" aria-hidden="true">🧁</div>
+                <h3>Geen resultaten</h3>
+                <p class="muted">Pas filters aan of wis je zoekopdracht om alles te tonen.</p>
+                <div class="empty-actions">
+                  <button class="btn" @click="clearFilters">Filters wissen</button>
+                  <button class="btn primary" @click="clearSearch">Zoekopdracht wissen</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <footer class="footer">
+          <span>© {{ year }} Ben &amp; Jerry’s – Backoffice</span>
+        </footer>
+      </main>
+    </div>
   </div>
 </template>
 
 <script>
 import OrderList from '../components/OrderList.vue'
 
-/* ============== Helpers ============== */
 const removeDiacritics = (s) => s.normalize('NFKD').replace(/\p{Diacritic}/gu, '')
 const baseNorm = (s) =>
   removeDiacritics(
@@ -224,10 +231,8 @@ const baseNorm = (s) =>
       .trim(),
   )
 
-// Canonieke statuswaarden (exact die jij gebruikt)
 const CANON = ['te verwerken', 'verzonden', 'geannuleerd']
 
-// Synoniemen/varianten → canoniek (géén "in behandeling" meer)
 const STATUS_ALIASES = new Map([
   ['te-verwerken', 'te verwerken'],
   ['te verwerken ', 'te verwerken'],
@@ -268,7 +273,6 @@ function levenshtein(a, b) {
   return v[bl]
 }
 
-// Vind de visuele "rij" (werkt ook bij display: contents)
 function findRowRoot(node, gridRoot) {
   let el = node
   const visited = new Set()
@@ -291,11 +295,9 @@ function findRowRoot(node, gridRoot) {
   return null
 }
 
-// Klantnaam uit rij
 function extractCustomerFromRow(row) {
   const byAttr = row.getAttribute('data-customer') || row.getAttribute('data-client')
   if (byAttr) return byAttr.trim()
-
   const sel = row.querySelector(
     [
       '.customer-name',
@@ -316,28 +318,21 @@ function extractCustomerFromRow(row) {
     const guess = (sel.innerText || sel.textContent || '').trim()
     if (guess) return guess
   }
-
   const text = (row.innerText || row.textContent || '').replace(/\s+/g, ' ').trim()
   const byLabel = text.match(/\b(?:Klant|Naam|Customer|Besteller)\s*:\s*([^\n\r|•]+)/i)
   if (byLabel && byLabel[1]) return byLabel[1].trim()
-
   const cap = text.match(
     /([A-ZÀ-ÖØ-Þ][\p{L}'\-]+(?:\s+(?:van|de|der|den|da|dos|di|du|la|le|von|op|ten|te)\s+)?[A-ZÀ-ÖØ-Þ]?[\p{L}'\-]+(?:\s+[A-ZÀ-ÖØ-Þ][\p{L}'\-]+)*)/u,
   )
   if (cap && cap[1]) return cap[1].trim()
-
   return ''
 }
 
-// Status uit rij (data-attr, badge of <select>)
 function extractStatusFromRow(row) {
   const attrSelf = row.getAttribute('data-status')
   if (attrSelf) return normalizeStatus(attrSelf)
-
   const attrChild = row.querySelector('[data-status]')
   if (attrChild) return normalizeStatus(attrChild.getAttribute('data-status'))
-
-  // Kijk eerst naar een expliciet status-select
   const select =
     row.querySelector('select[aria-label*="status" i]') ||
     row.querySelector('select[name*="status" i]') ||
@@ -351,8 +346,6 @@ function extractStatusFromRow(row) {
     const preferred = normalizeStatus(val) || normalizeStatus(txt)
     if (preferred) return preferred
   }
-
-  // Badge/label
   const badge =
     row.querySelector('.status, .status-badge, [class*="status-"]') ||
     row.querySelector('[aria-label*="Status" i]')
@@ -361,15 +354,9 @@ function extractStatusFromRow(row) {
     const n = normalizeStatus(t)
     if (n) return n
   }
-
-  // Fallback: plain text zoeken naar canonieke waarden/synoniemen
   const t = baseNorm(row.textContent || '')
-  for (const key of CANON) {
-    if (t.includes(key)) return key
-  }
-  for (const [alias, canon] of STATUS_ALIASES.entries()) {
-    if (t.includes(alias)) return canon
-  }
+  for (const key of CANON) if (t.includes(key)) return key
+  for (const [alias, canon] of STATUS_ALIASES.entries()) if (t.includes(alias)) return canon
   return ''
 }
 
@@ -382,19 +369,21 @@ export default {
       year: new Date().getFullYear(),
       query: '',
       statusFilter: '',
-      sortBy: 'none', // 'none' | 'name-asc' | 'name-desc'
+      sortBy: 'none',
       totalCount: 0,
       visibleCount: 0,
       isRefreshing: false,
       debounceHandle: null,
       _observer: null,
-      _index: new Map(), // Element -> { raw, norm, status }
+      _index: new Map(),
       _rows: [],
       _collator: new Intl.Collator(undefined, {
         sensitivity: 'base',
         usage: 'search',
         ignorePunctuation: true,
       }),
+      prefersReducedMotion: false,
+      parallax: { x: 0, y: 0 },
     }
   },
 
@@ -428,6 +417,9 @@ export default {
   },
 
   mounted() {
+    try {
+      this.prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    } catch (_) {}
     this.$nextTick(() => {
       this.reindexRows()
       this.applyFilter()
@@ -444,7 +436,16 @@ export default {
   },
 
   methods: {
-    /* ---------- UX ---------- */
+    onParallax(e) {
+      if (this.prefersReducedMotion) return
+      const { innerWidth, innerHeight } = window
+      const x = (e.clientX / innerWidth - 0.5) * 2
+      const y = (e.clientY / innerHeight - 0.5) * 2
+      this.parallax = { x, y }
+      document.documentElement.style.setProperty('--parallax-x', (x * 10).toFixed(2) + 'px')
+      document.documentElement.style.setProperty('--parallax-y', (y * 10).toFixed(2) + 'px')
+    },
+
     confirmLogout() {
       if (confirm('Weet je zeker dat je wilt uitloggen?')) {
         localStorage.removeItem('token')
@@ -453,9 +454,7 @@ export default {
     },
 
     refreshOrders() {
-      // Zelfde effect als browser refresh (Ctrl+R)
       this.isRefreshing = true
-      // Heel korte delay zodat de "Bezig…" UI zichtbaar is
       setTimeout(() => {
         window.location.reload()
       }, 50)
@@ -502,7 +501,6 @@ export default {
       }, 100)
     },
 
-    /* ---------- Indexering & selectie ---------- */
     getOrderRows() {
       const root = this.$refs.ordersGrid
       if (!root) return []
@@ -541,7 +539,6 @@ export default {
       ).length
     },
 
-    /* ---------- Zoeken ---------- */
     parseQuery(raw) {
       const q = String(raw || '').trim()
       if (!q) return { exact: false, terms: [] }
@@ -611,7 +608,6 @@ export default {
       return false
     },
 
-    /* ---------- Filter + sort ---------- */
     applyFilter() {
       const rows = this._rows.length ? this._rows : this.getOrderRows()
       if (!rows.length) {
@@ -636,7 +632,6 @@ export default {
           this._index.set(el, idx)
         }
 
-        // live status her-evalueren (select/wijzigingen)
         const liveStatus = extractStatusFromRow(el)
         if (liveStatus && liveStatus !== idx.status) {
           idx.status = liveStatus
@@ -704,11 +699,10 @@ export default {
         childList: true,
         subtree: true,
         characterData: true,
-        attributes: true, // ook wanneer data-status/class verandert
+        attributes: true,
       })
     },
 
-    // Luister op changes van <select> (status switch) via event delegation
     bindStatusChangeDelegation() {
       const root = this.$refs.ordersGrid
       if (!root) return
@@ -723,7 +717,7 @@ export default {
         row.__statusNorm = status
         row.setAttribute('data-index-status', status)
         this._index.set(row, idx)
-        this.applyFilter() // direct her-evalueren
+        this.applyFilter()
       }
       root.addEventListener('change', this._onChange, true)
     },
@@ -737,50 +731,31 @@ export default {
 }
 </script>
 
-<!-- GLOBAL RESET -->
 <style>
-html,
+:root {
+  --bj-blue-900: #133c5a;
+  --bj-blue-800: #145a7a;
+  --bj-blue-700: #1676a1;
+  --bj-blue-600: #1992c1;
+  --bj-mint-200: #b6f5e1;
+  --bj-sky-200: #b6e7ff;
+  --bj-sky-300: #7fd3ff;
+  --bj-straw-200: #ffd1e1;
+  --border: #e7eef6;
+  --card: #ffffff;
+  --cloud: #ffffff;
+  --content-w: min(1600px, 96vw);
+  --muted: #667a8b;
+  --parallax-x: 0px;
+  --parallax-y: 0px;
+  --ring: 0 0 0 3px rgba(25, 146, 193, 0.22);
+}
+
+#app,
 body,
-#app {
-  height: 100%;
-}
-html,
-body {
-  margin: 0;
-  padding: 0;
-}
-* {
-  box-sizing: border-box;
-}
-.sr {
-  position: absolute !important;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-</style>
-
-<style scoped>
-/* -------------------------------------------------
-   BEN & JERRY’S — PROFESSIONAL BACKOFFICE TABLE LIST
-   ------------------------------------------------- */
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Nunito:wght@400;600;700;800&display=swap');
-
-/* ---------- Shell ---------- */
-.admin-shell {
-  display: grid;
-  grid-template-columns: 300px 1fr;
-  min-height: 100vh;
-  background:
-    white,
-    radial-gradient(80% 48% at 100% 0%, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0) 45%),
-    linear-gradient(180deg, #f7fbff 0%, #fff 100%);
-  color: #0d1b2a;
+html {
+  background: linear-gradient(180deg, #f9fcff 0%, #ffffff 40%);
+  color: var(--bj-blue-900);
   font-family:
     'Nunito',
     system-ui,
@@ -788,51 +763,240 @@ body {
     Segoe UI,
     Roboto,
     sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  height: 100%;
+  overflow-x: clip;
 }
 
-/* ---------- Sidebar ---------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:where(a, button, select):focus-visible {
+  border-radius: 999px;
+  box-shadow: var(--ring);
+  outline: none;
+}
+
+.reduced-motion * {
+  animation: none !important;
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bg-layer,
+  .cloud {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bj-blue-900: #e6f3ff;
+    --border: #1e2a38;
+    --card: #0f1720;
+    --muted: #9bb3c3;
+  }
+
+  #app,
+  body,
+  html {
+    background: linear-gradient(180deg, #0b1220 0%, #0f1720 40%);
+  }
+}
+
+body,
+html {
+  margin: 0;
+  padding: 0;
+}
+
+.sr {
+  border: 0;
+  clip: rect(0, 0, 0, 0);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute !important;
+  white-space: nowrap;
+  width: 1px;
+}
+</style>
+
+<style scoped>
+.admin-scene {
+  min-height: 100vh;
+  overflow-x: clip;
+  position: relative;
+}
+
+.skip-link {
+  background: #0a3056;
+  border-radius: 10px;
+  color: #fff;
+  left: 12px;
+  padding: 8px 12px;
+  position: absolute;
+  top: -40px;
+  transition: top 0.15s ease;
+  z-index: 1000;
+}
+
+.skip-link:focus {
+  top: 12px;
+}
+
+.bg-layer {
+  inset: -8%;
+  opacity: 0.7;
+  pointer-events: none;
+  position: fixed;
+  transform: translate(var(--parallax-x), var(--parallax-y));
+  transition: transform 160ms ease-out;
+  z-index: 0;
+}
+
+.bg-1 {
+  background:
+    radial-gradient(600px 300px at -5% -10%, #e9f7ff 0%, rgba(233, 247, 255, 0) 60%),
+    radial-gradient(700px 360px at 110% -8%, #fff6f9 0%, rgba(255, 246, 249, 0) 62%);
+}
+
+.bg-2 {
+  background:
+    radial-gradient(420px 260px at 90% 98%, #f1fffb 0%, rgba(241, 255, 251, 0) 60%),
+    radial-gradient(360px 200px at 12% 96%, #f3f8ff 0%, rgba(243, 248, 255, 0) 62%);
+  mix-blend-mode: multiply;
+}
+
+.bg-3 {
+  background:
+    conic-gradient(from 210deg at 120% -10%, rgba(110, 207, 246, 0.12), rgba(255, 255, 255, 0) 45%),
+    conic-gradient(from 120deg at -20% 110%, rgba(255, 200, 230, 0.14), rgba(255, 255, 255, 0) 38%);
+  opacity: 0.9;
+}
+
+.cloud {
+  animation: float 9s ease-in-out infinite;
+  background: var(--cloud);
+  border-radius: 70px;
+  filter: drop-shadow(0 14px 30px rgba(19, 60, 90, 0.08));
+  height: 120px;
+  position: fixed;
+  width: 280px;
+  z-index: 0;
+}
+
+.cloud::before,
+.cloud::after {
+  background: var(--cloud);
+  border-radius: 80px;
+  content: '';
+  position: absolute;
+}
+
+.cloud::before {
+  height: 120px;
+  left: -60px;
+  top: -18px;
+  width: 160px;
+}
+
+.cloud::after {
+  height: 140px;
+  right: -70px;
+  top: -24px;
+  width: 200px;
+}
+
+.cloud-1 {
+  animation-delay: 0.2s;
+  left: 6%;
+  top: 8%;
+}
+
+.cloud-2 {
+  animation-delay: 1s;
+  right: 6%;
+  top: 16%;
+  width: 320px;
+}
+
+.cloud-3 {
+  animation-delay: 0.6s;
+  bottom: 10%;
+  left: 3%;
+  width: 260px;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0) translateX(0);
+  }
+  50% {
+    transform: translateY(-8px) translateX(6px);
+  }
+}
+
+.admin-shell {
+  color: #0d1b2a;
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  min-height: 100vh;
+  position: relative;
+  z-index: 1;
+}
+
 .sidebar {
-  position: sticky;
-  top: 0;
-  height: 100vh;
+  backdrop-filter: saturate(1.05) blur(2px);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.82));
+  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  height: 100vh;
   padding: 1.25rem 1rem;
-  background: #fff;
-  border-right: 1px solid #e8eef5;
+  position: sticky;
+  top: 0;
 }
+
 .brand {
-  display: flex;
   align-items: center;
+  background: linear-gradient(135deg, #6ecff6, #9be8ff);
+  border-radius: 14px;
+  box-shadow: 0 2px 10px rgba(13, 27, 42, 0.06);
+  color: #08315b;
+  display: flex;
   gap: 0.8rem;
   padding: 1rem;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #6ecff6, #9be8ff);
-  color: #08315b;
-  box-shadow: 0 2px 10px rgba(13, 27, 42, 0.06);
 }
+
 .logo {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.05);
   display: grid;
+  font-size: 1.4rem;
+  height: 48px;
   place-items: center;
   width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  background: #fff;
-  font-size: 1.4rem;
-  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.05);
 }
+
 .brand-text {
   line-height: 1.1;
 }
+
 .brand-text strong {
   display: block;
   font-family: 'Fredoka', cursive;
   font-size: 1.05rem;
   letter-spacing: 0.2px;
 }
+
 .brand-text span {
   color: #08315b;
   font-weight: 800;
@@ -844,252 +1008,325 @@ body {
   gap: 0.35rem;
   justify-items: start;
 }
+
 .nav-item {
-  width: 100%;
-  display: grid;
-  grid-template-columns: 22px 1fr auto;
-  gap: 0.75rem;
   align-items: center;
-  padding: 0.65rem 0.9rem;
-  border-radius: 12px;
-  border: 1px solid transparent;
   background: #fff;
+  border: 1px solid transparent;
+  border-radius: 12px;
   color: #0b2a4a;
   cursor: pointer;
+  display: grid;
   font-weight: 800;
+  gap: 0.75rem;
+  grid-template-columns: 22px 1fr auto;
+  padding: 0.65rem 0.9rem;
   text-align: left;
   transition:
     background 0.15s,
     border-color 0.15s,
     box-shadow 0.15s;
+  width: 100%;
 }
+
 .nav-ico {
-  width: 22px;
   display: flex;
-  align-items: center;
   justify-content: center;
+  width: 22px;
+  align-items: center;
 }
+
 .nav-item:hover {
   background: #f7fbff;
   border-color: #cfe6fb;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
 }
+
 .nav-item.active,
 [aria-current='page'] {
-  border-color: #1d4754;
   background: linear-gradient(180deg, #fff, #f5f9ff);
+  border-color: #1d4754;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
 }
+
 .nav-item[disabled] {
-  opacity: 0.5;
   cursor: not-allowed;
+  opacity: 0.5;
 }
+
 .badge {
+  background: #fff2f8;
+  border: 1px dashed #ffd1e7;
+  border-radius: 999px;
+  color: #b9467d;
+  font-size: 0.72rem;
   justify-self: end;
   padding: 0.18rem 0.5rem;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  background: #fff2f8;
-  color: #b9467d;
-  border: 1px dashed #ffd1e7;
 }
+
 .sidebar-spacer {
   flex: 1;
 }
 
-/* ---------- Content + Topbar ---------- */
 .content {
-  min-width: 0;
   display: grid;
   grid-template-rows: auto 1fr auto;
+  min-width: 0;
 }
+
 .topbar {
+  background-image:
+    url('/wood-texture.png'),
+    repeating-linear-gradient(
+      90deg,
+      #a67853 0px,
+      #a67853 28px,
+      #8f6242 28px,
+      #8f6242 56px,
+      #b6845d 56px,
+      #b6845d 84px,
+      #9c6b48 84px,
+      #9c6b48 112px
+    ),
+    linear-gradient(180deg, #b98a63 0%, #8c5a34 100%);
+  background-position:
+    center,
+    top center,
+    center;
+  background-repeat: repeat-x, repeat, no-repeat;
+  background-size:
+    cover,
+    600px 120px,
+    cover;
+  box-shadow: 0 10px 24px rgba(40, 30, 16, 0.28);
+  color: #fff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.9rem 1.5rem;
   position: sticky;
   top: 0;
   z-index: 10;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.9rem 1.5rem;
-  background: linear-gradient(180deg, #164b77, #1a5a8c);
-  color: #fff;
-  box-shadow: 0 2px 12px rgba(22, 75, 119, 0.25);
 }
+
+.topbar::before {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.35) 0%,
+      rgba(255, 255, 255, 0.1) 35%,
+      rgba(0, 0, 0, 0.08) 100%
+    ),
+    radial-gradient(120% 80% at 50% -30%, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0) 60%);
+  content: '';
+  inset: 0;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+  position: absolute;
+}
+
+.topbar > * {
+  position: relative;
+  z-index: 1;
+}
+
 .topbar-title {
-  margin: 0;
   color: #fff;
   font-family: 'Fredoka', cursive;
   font-size: 1.6rem;
   letter-spacing: 0.3px;
+  margin: 0;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.18);
 }
+
 .topbar-actions {
-  display: flex;
   align-items: center;
+  display: flex;
   gap: 18px;
 }
+
 .refresh-link {
   appearance: none;
+  background: rgba(255, 255, 255, 0.85);
   border: 0;
-  background: transparent;
-  padding: 0;
-  color: #f2f7fc;
-  font-weight: 900;
+  border-radius: 999px;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
+  color: #0b2239;
   cursor: pointer;
   display: inline-flex;
-  gap: 8px;
   align-items: center;
+  font-weight: 900;
+  gap: 8px;
+  padding: 0.45rem 0.9rem;
 }
+
+.refresh-link:hover {
+  background: #fff;
+}
+
 .refresh-ico {
+  display: inline-flex;
   font-size: 1.05rem;
   transform: translateY(-1px);
-  display: inline-flex;
 }
+
 .refresh-ico.is-rotating {
   animation: spin 0.9s linear infinite;
 }
+
 @keyframes spin {
   to {
     transform: translateY(-1px) rotate(360deg);
   }
 }
+
 @media (prefers-reduced-motion: reduce) {
   .refresh-ico.is-rotating {
     animation: none;
   }
 }
+
 .btn {
   appearance: none;
-  border: 1px solid #d9e4ee;
-  padding: 0.55rem 1rem;
-  border-radius: 999px;
   background: #fff;
+  border: 1px solid #d9e4ee;
+  border-radius: 999px;
   color: #0d1b2a;
   cursor: pointer;
   font-weight: 800;
+  padding: 0.55rem 1rem;
   transition:
     box-shadow 0.14s ease,
     background 0.14s ease,
     border-color 0.14s ease,
     color 0.14s ease;
 }
+
 .btn:hover {
-  box-shadow: 0 10px 24px rgba(13, 27, 42, 0.1);
   border-color: #cfe2f3;
+  box-shadow: 0 10px 24px rgba(13, 27, 42, 0.1);
 }
+
 .btn:focus-visible {
-  outline: none;
   box-shadow:
     0 0 0 4px rgba(110, 207, 246, 0.28),
     0 6px 18px rgba(13, 27, 42, 0.1);
+  outline: none;
 }
+
 .btn.primary {
   background: #0a3056;
-  color: #fff;
   border-color: #0a3056;
+  color: #fff;
 }
+
 .btn.ghost {
   background: transparent;
   box-shadow: none;
+  color: var(--bj-blue-700);
 }
+
 .btn.logout {
   background: #6ecff6;
-  color: #ffffff;
-  font-weight: 900;
   border-color: #56b8e1;
-  transition:
-    box-shadow 0.18s,
-    background 0.18s,
-    border-color 0.18s;
+  color: #fff;
+  font-weight: 900;
 }
+
 .btn.logout:hover {
+  background: linear-gradient(180deg, #74d3f8 0%, #67c7f1 100%);
+  border-color: #45acd4;
   box-shadow:
     0 0 0 4px rgba(110, 207, 246, 0.22),
     0 6px 18px rgba(13, 27, 42, 0.12);
-  border-color: #45acd4;
-  background: linear-gradient(180deg, #74d3f8 0%, #67c7f1 100%);
-}
-.btn.logout:active {
-  box-shadow: 0 0 0 3px rgba(110, 207, 246, 0.25) inset;
-}
-.btn:disabled,
-.btn[aria-disabled='true'] {
-  opacity: 0.6;
-  cursor: not-allowed;
-  box-shadow: none;
 }
 
-/* ---------- Panel & Controls ---------- */
+.btn:disabled,
+.btn[aria-disabled='true'] {
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .panel {
   margin: 1.25rem 1.5rem 2rem;
   padding: 0 0 2rem;
 }
+
 .panel-header {
   margin: 1rem 0 0.25rem;
 }
 
 .controls {
+  align-items: center;
   display: grid;
-  grid-template-columns: 1fr auto auto auto;
   gap: 12px;
-  align-items: center;
+  grid-template-columns: 1fr auto auto auto;
 }
+
 .search-input {
-  position: relative;
-  display: flex;
   align-items: center;
+  display: flex;
+  position: relative;
 }
+
 .search-ico {
-  position: absolute;
   left: 12px;
-  pointer-events: none;
   opacity: 0.82;
+  pointer-events: none;
+  position: absolute;
 }
+
 .search-input input[type='search'] {
-  width: 100%;
-  padding: 0.6rem 2.2rem;
+  background: #fff;
   border: 1px solid #d6e2ee;
   border-radius: 10px;
-  background: #fff;
-  line-height: 1.35;
   font-size: 1rem;
   font-weight: 800;
+  line-height: 1.35;
+  padding: 0.6rem 2.2rem;
   transition:
     border-color 0.12s,
     box-shadow 0.12s,
     background 0.12s;
+  width: 100%;
 }
+
 .search-input input::placeholder {
   color: #5b7083;
   font-weight: 700;
   opacity: 0.8;
 }
+
 .search-input input:focus {
-  outline: none;
   border-color: #9fd8ff;
   box-shadow: 0 0 0 4px rgba(110, 207, 246, 0.24);
+  outline: none;
 }
+
 .btn-clear {
-  position: absolute;
-  right: 8px;
-  padding: 0.2rem 0.4rem;
+  background: transparent;
   border: 0;
   border-radius: 8px;
-  background: transparent;
-  font-size: 1.1rem;
   cursor: pointer;
+  font-size: 1.1rem;
+  padding: 0.2rem 0.4rem;
+  position: absolute;
+  right: 8px;
 }
 
 .filters {
+  align-items: center;
   display: flex;
   gap: 8px;
-  align-items: center;
 }
+
 .select select {
-  padding: 0.56rem 0.8rem;
+  background: #fff;
   border: 1px solid #d6e2ee;
   border-radius: 10px;
-  background: #fff;
   font-weight: 800;
+  padding: 0.56rem 0.8rem;
 }
 
 .control-meta {
@@ -1097,79 +1334,87 @@ body {
   font-weight: 800;
   white-space: nowrap;
 }
+
 .control-meta .muted {
   color: #5b7083;
   font-weight: 700;
 }
+
 .control-actions {
   display: flex;
   gap: 8px;
 }
 
-/* Subheader */
 .panel-subheader {
-  display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.2rem 0.35rem;
-  margin: 0.2rem 0 0.4rem;
   color: #0b2a4a;
+  display: flex;
   font-weight: 900;
+  gap: 0.5rem;
+  margin: 0.2rem 0 0.4rem;
+  padding: 0.5rem 0.2rem 0.35rem;
 }
+
 .panel-subheader.sticky {
+  background: rgba(255, 255, 255, 0.92);
+  border-bottom: 1px solid var(--border);
   position: sticky;
   top: 62px;
   z-index: 5;
-  background: #fff;
-  border-bottom: 1px solid #e8eef5;
+  backdrop-filter: blur(2px);
 }
+
 .subheader-dot {
-  font-size: 1.4rem;
   color: #79c2f3;
+  font-size: 1.4rem;
   transform: translateY(-1px);
 }
+
 .subheader-title {
-  margin: 0;
   font-size: 1.02rem;
   letter-spacing: 0.2px;
+  margin: 0;
 }
+
 .chips {
   display: flex;
   gap: 6px;
   margin-left: 0.5rem;
 }
+
 .chip {
-  padding: 0.25rem 0.55rem;
-  border-radius: 999px;
-  border: 1px solid #d6e2ee;
   background: #f7fbff;
-  font-weight: 900;
+  border: 1px solid #d6e2ee;
+  border-radius: 999px;
   cursor: pointer;
+  font-weight: 900;
+  padding: 0.25rem 0.55rem;
 }
 
-/* ---------- Tabel ---------- */
 .panel-body {
-  background: #fff;
-  border: 1px solid #e8eef5;
+  background: var(--card);
+  border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(13, 27, 42, 0.08);
   overflow: hidden;
 }
+
 .table-head {
-  display: grid;
-  grid-template-columns: minmax(220px, 1.2fr) minmax(180px, 1fr) 160px 180px;
-  gap: 0;
   align-items: center;
-  padding: 0.65rem 1rem;
   background: #f7faff;
-  border-bottom: 1px solid #e8eef5;
-  font-weight: 900;
+  border-bottom: 1px solid var(--border);
   color: #0b2a4a;
+  display: grid;
+  font-weight: 900;
+  grid-template-columns: minmax(220px, 1.2fr) minmax(180px, 1fr) 160px 180px;
+  padding: 0.65rem 1rem;
 }
+
 .th {
-  opacity: 0.9;
   font-size: 0.88rem;
+  opacity: 0.9;
 }
+
 .th--actions {
   justify-self: end;
 }
@@ -1178,6 +1423,7 @@ body {
   display: flex;
   flex-direction: column;
 }
+
 .orders-grid > * {
   display: contents;
 }
@@ -1189,15 +1435,16 @@ body {
 .orders-grid :deep(article),
 .orders-grid :deep(section),
 .orders-grid :deep(li) {
-  display: grid;
-  grid-template-columns: minmax(220px, 1.2fr) minmax(180px, 1fr) 160px 180px;
-  gap: 0;
   align-items: center;
-  padding: 0.75rem 1rem;
   background: #fff;
   border-bottom: 1px solid #eef3f8;
+  display: grid;
+  gap: 0;
+  grid-template-columns: minmax(220px, 1.2fr) minmax(180px, 1fr) 160px 180px;
   line-height: 1.25;
+  padding: 0.75rem 1rem;
 }
+
 .orders-grid :deep(.order:nth-child(odd)),
 .orders-grid :deep(.order-item:nth-child(odd)),
 .orders-grid :deep(.order-card:nth-child(odd)),
@@ -1207,6 +1454,7 @@ body {
 .orders-grid :deep(li:nth-child(odd)) {
   background: #fcfdff;
 }
+
 .orders-grid :deep(.order:hover),
 .orders-grid :deep(.order-item:hover),
 .orders-grid :deep(.order-card:hover),
@@ -1221,108 +1469,113 @@ body {
 .orders-grid :deep(.title),
 .orders-grid :deep(header h4),
 .orders-grid :deep(.customer-name) {
-  margin: 0;
+  color: #0b2a4a;
   font-family: 'Fredoka', cursive;
   font-size: 1rem;
-  color: #0b2a4a;
   font-weight: 700;
   letter-spacing: 0.2px;
+  margin: 0;
 }
+
 .orders-grid :deep(p),
 .orders-grid :deep(.meta),
 .orders-grid :deep(.description) {
-  margin: 0;
   color: #425a70;
   font-size: 0.95rem;
   font-weight: 700;
+  margin: 0;
   opacity: 0.95;
 }
 
-/* Status badge + kleuren */
 .orders-grid :deep(.status),
 .orders-grid :deep(.status-badge) {
+  background: #eef6ff;
+  border: 1px solid #d6eaff;
+  border-radius: 999px;
+  color: #0b345e;
+  font-size: 0.8rem;
+  font-weight: 900;
   justify-self: start;
   padding: 0.28rem 0.6rem;
-  border-radius: 999px;
-  font-weight: 900;
-  font-size: 0.8rem;
-  background: #eef6ff;
-  color: #0b345e;
-  border: 1px solid #d6eaff;
   white-space: nowrap;
 }
+
 .orders-grid :deep([data-status='verzonden' i]),
 .orders-grid :deep(.status-verzonden) {
   background: #effaf5;
-  color: #0b3d2c;
   border-color: #cdeee0;
+  color: #0b3d2c;
 }
+
 .orders-grid :deep([data-status='geannuleerd' i]),
 .orders-grid :deep(.status-geannuleerd) {
   background: #fff0f4;
-  color: #6f1233;
   border-color: #ffd5e1;
+  color: #6f1233;
 }
+
 .orders-grid :deep([data-status='te verwerken' i]),
 .orders-grid :deep(.status-te-verwerken) {
   background: #fff8e8;
-  color: #5a3a03;
   border-color: #ffe2a6;
+  color: #5a3a03;
 }
 
-/* Acties */
-.orders-grid :deep(button),
-.orders-grid :deep(a.button) {
-  padding: 0.4rem 0.7rem;
+.orders-grid :deep(a.button),
+.orders-grid :deep(button) {
+  background: #fff;
   border: 1px solid #d9e4ee;
   border-radius: 10px;
-  background: #fff;
   color: #0b345e;
-  font-weight: 900;
   cursor: pointer;
-  text-decoration: none;
+  font-weight: 900;
   justify-self: end;
+  padding: 0.4rem 0.7rem;
+  text-decoration: none;
   transition:
     box-shadow 0.12s,
     border-color 0.12s,
     background 0.12s;
 }
-.orders-grid :deep(button:hover),
-.orders-grid :deep(a.button:hover) {
+
+.orders-grid :deep(a.button:hover),
+.orders-grid :deep(button:hover) {
   border-color: #9bd9ff;
   box-shadow: 0 6px 14px rgba(13, 27, 42, 0.08);
 }
-.orders-grid :deep(button:focus-visible),
-.orders-grid :deep(a.button:focus-visible) {
-  outline: none;
+
+.orders-grid :deep(a.button:focus-visible),
+.orders-grid :deep(button:focus-visible) {
   box-shadow: 0 0 0 4px rgba(110, 207, 246, 0.28);
+  outline: none;
 }
+
 .orders-grid :deep(button.danger),
 .orders-grid :deep(button[aria-label*='Verwijderen']),
 .orders-grid :deep(button[data-variant='danger']) {
-  border-color: #ffd8e5;
   background: #fff5f8;
+  border-color: #ffd8e5;
   color: #b11d49;
 }
 
-/* Hidden */
 .orders-grid :deep(.is-hidden) {
   display: none !important;
 }
 
-/* Lege-staat */
 .empty-state {
-  margin: 0.85rem;
-  padding: 1.2rem;
+  background: linear-gradient(180deg, #f7fffb, #fff);
   border: 1px dashed #d6ecff;
   border-radius: 10px;
+  margin: 0.85rem;
+  padding: 1.2rem;
   text-align: center;
-  background: linear-gradient(180deg, #f7fffb, #fff);
 }
+
 .empty-state .empty-emoji {
-  margin-bottom: 0.25rem;
   font-size: 2rem;
+  margin-bottom: 0.25rem;
 }
+
 .empty-actions {
   display: flex;
   gap: 8px;
@@ -1330,28 +1583,29 @@ body {
   margin-top: 0.5rem;
 }
 
-/* Footer */
 .footer {
-  display: flex;
   align-items: center;
+  color: #5b7083;
+  display: flex;
+  font-weight: 800;
   justify-content: center;
   padding: 1.2rem 2rem;
-  color: #5b7083;
-  font-weight: 800;
 }
 
-/* ---------- Responsive ---------- */
 @media (max-width: 1180px) {
   .admin-shell {
     grid-template-columns: 260px 1fr;
   }
+
   .panel {
     margin: 1rem 1rem 1.5rem;
   }
+
   .controls {
-    grid-template-columns: 1fr auto auto;
     grid-auto-flow: row;
+    grid-template-columns: 1fr auto auto;
   }
+
   .table-head,
   .orders-grid :deep(.order),
   .orders-grid :deep(.order-item),
@@ -1363,25 +1617,31 @@ body {
     grid-template-columns: 1.25fr 1fr 140px 150px;
   }
 }
+
 @media (max-width: 860px) {
   .admin-shell {
     grid-template-columns: 1fr;
   }
+
   .sidebar {
-    position: static;
-    height: auto;
+    border-bottom: 1px solid var(--border);
     border-right: 0;
-    border-bottom: 1px solid #e8eef5;
+    height: auto;
+    position: static;
   }
+
   .topbar {
     position: static;
   }
+
   .only-desktop {
     display: none;
   }
+
   .table-head {
     display: none;
   }
+
   .orders-grid :deep(.order),
   .orders-grid :deep(.order-item),
   .orders-grid :deep(.order-card),
@@ -1389,10 +1649,11 @@ body {
   .orders-grid :deep(article),
   .orders-grid :deep(section),
   .orders-grid :deep(li) {
-    grid-template-columns: 1fr;
     gap: 6px 10px;
+    grid-template-columns: 1fr;
     padding: 0.8rem 1rem;
   }
+
   .orders-grid :deep(.order > *:last-child) {
     justify-self: start;
   }
