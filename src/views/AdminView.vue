@@ -24,21 +24,24 @@
           aria-current="page"
           @click="scrollTo('orders')"
         >
-          <span class="nav-ico">📦</span>
-          <span>Bestellingen</span>
+          <span class="nav-ico" aria-hidden="true">📦</span>
+          <span class="nav-label">Bestellingen</span>
         </button>
+
         <button type="button" class="nav-item" disabled>
-          <span class="nav-ico">📊</span>
-          <span>Rapporten</span>
+          <span class="nav-ico" aria-hidden="true">📊</span>
+          <span class="nav-label">Rapporten</span>
           <span class="badge">binnenkort</span>
         </button>
+
         <button type="button" class="nav-item" disabled>
-          <span class="nav-ico">⚙️</span>
-          <span>Instellingen</span>
+          <span class="nav-ico" aria-hidden="true">⚙️</span>
+          <span class="nav-label">Instellingen</span>
         </button>
+
         <button type="button" class="nav-item" disabled>
-          <span class="nav-ico">❓</span>
-          <span>Help</span>
+          <span class="nav-ico" aria-hidden="true">❓</span>
+          <span class="nav-label">Help</span>
         </button>
       </nav>
 
@@ -49,26 +52,30 @@
     <main class="content">
       <header class="topbar" role="banner">
         <div class="title-wrap">
-          <h1>Adminpaneel</h1>
-          <p class="subtitle">Beheer van alle custom ijs-bestellingen</p>
+          <h1 class="topbar-title">Adminpaneel</h1>
         </div>
 
         <div class="topbar-actions only-desktop">
           <button
             type="button"
-            class="btn"
+            class="refresh-link"
             @click="refreshOrders"
             :aria-busy="isRefreshing ? 'true' : 'false'"
+            :aria-label="isRefreshing ? 'Lijst vernieuwen bezig' : 'Vernieuwen'"
           >
-            <span v-if="!isRefreshing">↻ Vernieuwen</span>
+            <span class="refresh-ico" :class="{ 'is-rotating': isRefreshing }" aria-hidden="true"
+              >↻</span
+            >
+            <span v-if="!isRefreshing">Vernieuwen</span>
             <span v-else>Bezig…</span>
           </button>
-          <button type="button" class="btn primary" @click="confirmLogout">Logout</button>
+
+          <button type="button" class="btn logout" @click="confirmLogout">Logout</button>
         </div>
       </header>
 
       <section id="orders" class="panel" aria-label="Bestellingen">
-        <!-- Header: zoekbalk neemt de volledige plek in -->
+        <!-- Header: zoekbalk + filters -->
         <div class="panel-header">
           <div class="controls controls--inline" role="search" aria-label="Zoeken en acties">
             <div class="search-input">
@@ -79,6 +86,9 @@
                 type="search"
                 :placeholder="placeholder"
                 inputmode="search"
+                autocomplete="off"
+                autocapitalize="off"
+                spellcheck="false"
                 aria-label="Zoek op klantnaam"
                 @input="debouncedFilter()"
                 @keydown.enter.prevent
@@ -94,13 +104,34 @@
               </button>
             </div>
 
+            <div class="filters" role="group" aria-label="Filters">
+              <label class="select">
+                <span class="sr">Statusfilter</span>
+                <select v-model="statusFilter" @change="applyFilter" aria-label="Filter op status">
+                  <option value="">Alle statussen</option>
+                  <option value="te verwerken">Te verwerken</option>
+                  <option value="verzonden">Verzonden</option>
+                  <option value="geannuleerd">Geannuleerd</option>
+                </select>
+              </label>
+
+              <label class="select">
+                <span class="sr">Sorteren</span>
+                <select v-model="sortBy" @change="applySort" aria-label="Sorteer volgorde">
+                  <option value="none">Sorteer: —</option>
+                  <option value="name-asc">Naam A → Z</option>
+                  <option value="name-desc">Naam Z → A</option>
+                </select>
+              </label>
+            </div>
+
             <div class="control-meta" role="status" aria-live="polite">
-              <template v-if="!query">
+              <template v-if="!query && !statusFilter">
                 <span>Totaal: {{ totalCount }}</span>
               </template>
               <template v-else>
                 <span>
-                  Naam-matches: <strong>{{ visibleCount }}</strong>
+                  Zichtbaar: <strong>{{ visibleCount }}</strong>
                   <span class="muted">van {{ totalCount }}</span>
                 </span>
               </template>
@@ -113,15 +144,58 @@
           </div>
         </div>
 
-        <!-- LAYOUT; <OrderList/> blijft identiek -->
-        <div class="panel-body orders-grid" ref="ordersGrid">
-          <OrderList />
-          <!-- Lege-staat -->
-          <div v-if="query && visibleCount === 0" class="empty-state" aria-live="polite">
-            <div class="empty-emoji" aria-hidden="true">🧁</div>
-            <h3>Geen bestellingen voor “{{ query }}”</h3>
-            <p class="muted">Controleer de spelling of wis de zoekopdracht om alles te tonen.</p>
-            <button class="btn primary" @click="clearSearch">Alles weergeven</button>
+        <!-- Lijsttitel -->
+        <div class="panel-subheader sticky" :class="{ 'has-filter': !!statusFilter || !!query }">
+          <div class="subheader-dot" aria-hidden="true">•</div>
+          <h2 class="subheader-title">Alle bestellingen</h2>
+          <div v-if="activeChips.length" class="chips" role="list" aria-label="Actieve filters">
+            <button
+              v-for="chip in activeChips"
+              :key="chip.key"
+              class="chip"
+              role="listitem"
+              @click="chip.onClear()"
+              :aria-label="chip.aria"
+              title="Filter verwijderen"
+            >
+              {{ chip.label }} ✕
+            </button>
+          </div>
+        </div>
+
+        <!-- Orders lijst -->
+        <div class="panel-body">
+          <!-- Kolomkoppen -->
+          <div class="table-head" role="row" aria-hidden="true">
+            <div class="th th--customer">Klant</div>
+            <div class="th th--details">Omschrijving</div>
+            <div class="th th--status">Status</div>
+            <div class="th th--actions">Acties</div>
+          </div>
+
+          <!-- Inhoud -->
+          <div class="orders-grid" ref="ordersGrid">
+            <!--
+              Tip voor 100% deterministische matching:
+              Render in OrderList elk item als wrapper met role="row"
+              + data-customer="Naam" + data-status="te verwerken|verzonden|geannuleerd".
+            -->
+            <OrderList />
+
+            <!-- Lege-staat -->
+            <div
+              v-if="(query || statusFilter) && visibleCount === 0"
+              class="empty-state"
+              aria-live="polite"
+            >
+              <div class="empty-emoji" aria-hidden="true">🧁</div>
+              <h3>Geen resultaten</h3>
+              <p class="muted">Pas filters aan of wis je zoekopdracht om alles te tonen.</p>
+              <div class="empty-actions">
+                <button class="btn" @click="clearFilters">Filters wissen</button>
+                <button class="btn primary" @click="clearSearch">Zoekopdracht wissen</button>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -136,36 +210,239 @@
 <script>
 import OrderList from '../components/OrderList.vue'
 
+/* ============== Helpers ============== */
+const removeDiacritics = (s) => s.normalize('NFKD').replace(/\p{Diacritic}/gu, '')
+const baseNorm = (s) =>
+  removeDiacritics(
+    String(s || '')
+      .toLowerCase()
+      .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
+      .replace(/[\u201C\u201D\u201E\u201F]/g, '"')
+      .replace(/[\u2010-\u2015]/g, '-')
+      .replace(/[._]/g, ' ')
+      .replace(/[\s\t\n\r]+/g, ' ')
+      .trim(),
+  )
+
+// Canonieke statuswaarden (exact die jij gebruikt)
+const CANON = ['te verwerken', 'verzonden', 'geannuleerd']
+
+// Synoniemen/varianten → canoniek (géén "in behandeling" meer)
+const STATUS_ALIASES = new Map([
+  ['te-verwerken', 'te verwerken'],
+  ['te verwerken ', 'te verwerken'],
+  ['teverwerken', 'te verwerken'],
+  ['pending', 'te verwerken'],
+  ['todo', 'te verwerken'],
+  ['shipped', 'verzonden'],
+  ['sent', 'verzonden'],
+  ['cancelled', 'geannuleerd'],
+  ['canceled', 'geannuleerd'],
+  ['geannuleerde', 'geannuleerd'],
+])
+
+function normalizeStatus(raw) {
+  const n = baseNorm(raw)
+  if (STATUS_ALIASES.has(n)) return STATUS_ALIASES.get(n)
+  return CANON.includes(n) ? n : ''
+}
+
+function levenshtein(a, b) {
+  if (a === b) return 0
+  let al = a.length,
+    bl = b.length
+  if (!al) return bl
+  if (!bl) return al
+  const v = Array.from({ length: bl + 1 }, (_, i) => i)
+  for (let i = 1; i <= al; i++) {
+    let prev = i - 1,
+      cur = i
+    for (let j = 1; j <= bl; j++) {
+      const t =
+        b.charCodeAt(j - 1) === a.charCodeAt(i - 1) ? prev : Math.min(prev + 1, v[j] + 1, cur + 1)
+      prev = v[j]
+      v[j] = t
+      cur = t
+    }
+  }
+  return v[bl]
+}
+
+// Vind de visuele "rij" (werkt ook bij display: contents)
+function findRowRoot(node, gridRoot) {
+  let el = node
+  const visited = new Set()
+  while (el && el !== gridRoot && el.nodeType === 1 && !visited.has(el)) {
+    visited.add(el)
+    const cs = getComputedStyle(el)
+    if (cs.display !== 'contents') {
+      const hasBorderRow = cs.borderBottomStyle !== 'none' || cs.borderTopStyle !== 'none'
+      const hasRadius = parseFloat(cs.borderTopLeftRadius) >= 6 || parseFloat(cs.borderRadius) >= 6
+      const hasShadow = cs.boxShadow && cs.boxShadow !== 'none'
+      const pad = ['Top', 'Right', 'Bottom', 'Left'].reduce(
+        (n, side) => n + parseFloat(cs['padding' + side] || 0),
+        0,
+      )
+      const looksLikeRow = (hasBorderRow || hasRadius || hasShadow) && pad >= 8
+      if (looksLikeRow) return el
+    }
+    el = el.parentElement
+  }
+  return null
+}
+
+// Klantnaam uit rij
+function extractCustomerFromRow(row) {
+  const byAttr = row.getAttribute('data-customer') || row.getAttribute('data-client')
+  if (byAttr) return byAttr.trim()
+
+  const sel = row.querySelector(
+    [
+      '.customer-name',
+      '.customer',
+      '[data-customer]',
+      '[data-client]',
+      '[aria-label*="Klant" i]',
+      '[aria-labelledby*="klant" i]',
+      'header h4',
+      'h3',
+      '.title',
+      'strong',
+      'b',
+      '[role="heading"]',
+    ].join(','),
+  )
+  if (sel) {
+    const guess = (sel.innerText || sel.textContent || '').trim()
+    if (guess) return guess
+  }
+
+  const text = (row.innerText || row.textContent || '').replace(/\s+/g, ' ').trim()
+  const byLabel = text.match(/\b(?:Klant|Naam|Customer|Besteller)\s*:\s*([^\n\r|•]+)/i)
+  if (byLabel && byLabel[1]) return byLabel[1].trim()
+
+  const cap = text.match(
+    /([A-ZÀ-ÖØ-Þ][\p{L}'\-]+(?:\s+(?:van|de|der|den|da|dos|di|du|la|le|von|op|ten|te)\s+)?[A-ZÀ-ÖØ-Þ]?[\p{L}'\-]+(?:\s+[A-ZÀ-ÖØ-Þ][\p{L}'\-]+)*)/u,
+  )
+  if (cap && cap[1]) return cap[1].trim()
+
+  return ''
+}
+
+// Status uit rij (data-attr, badge of <select>)
+function extractStatusFromRow(row) {
+  const attrSelf = row.getAttribute('data-status')
+  if (attrSelf) return normalizeStatus(attrSelf)
+
+  const attrChild = row.querySelector('[data-status]')
+  if (attrChild) return normalizeStatus(attrChild.getAttribute('data-status'))
+
+  // Kijk eerst naar een expliciet status-select
+  const select =
+    row.querySelector('select[aria-label*="status" i]') ||
+    row.querySelector('select[name*="status" i]') ||
+    row.querySelector('select')
+  if (select) {
+    const val = select.value || (select.selectedOptions && select.selectedOptions[0]?.value) || ''
+    const txt =
+      (select.selectedOptions && select.selectedOptions[0]?.textContent) ||
+      select.options?.[select.selectedIndex || 0]?.textContent ||
+      ''
+    const preferred = normalizeStatus(val) || normalizeStatus(txt)
+    if (preferred) return preferred
+  }
+
+  // Badge/label
+  const badge =
+    row.querySelector('.status, .status-badge, [class*="status-"]') ||
+    row.querySelector('[aria-label*="Status" i]')
+  if (badge) {
+    const t = badge.textContent || ''
+    const n = normalizeStatus(t)
+    if (n) return n
+  }
+
+  // Fallback: plain text zoeken naar canonieke waarden/synoniemen
+  const t = baseNorm(row.textContent || '')
+  for (const key of CANON) {
+    if (t.includes(key)) return key
+  }
+  for (const [alias, canon] of STATUS_ALIASES.entries()) {
+    if (t.includes(alias)) return canon
+  }
+  return ''
+}
+
 export default {
   name: 'AdminViewPro',
   components: { OrderList },
+
   data() {
     return {
       year: new Date().getFullYear(),
       query: '',
+      statusFilter: '',
+      sortBy: 'none', // 'none' | 'name-asc' | 'name-desc'
       totalCount: 0,
       visibleCount: 0,
       isRefreshing: false,
       debounceHandle: null,
       _observer: null,
+      _index: new Map(), // Element -> { raw, norm, status }
+      _rows: [],
+      _collator: new Intl.Collator(undefined, {
+        sensitivity: 'base',
+        usage: 'search',
+        ignorePunctuation: true,
+      }),
     }
   },
+
   computed: {
     placeholder() {
       return 'Zoek op klantnaam…'
     },
+    activeChips() {
+      const chips = []
+      if (this.query) {
+        chips.push({
+          key: 'q',
+          label: `Zoek: “${this.query}”`,
+          aria: 'Zoekfilter verwijderen',
+          onClear: this.clearSearch,
+        })
+      }
+      if (this.statusFilter) {
+        chips.push({
+          key: 's',
+          label: `Status: ${this.statusFilter}`,
+          aria: 'Statusfilter verwijderen',
+          onClear: () => {
+            this.statusFilter = ''
+            this.applyFilter()
+          },
+        })
+      }
+      return chips
+    },
   },
+
   mounted() {
     this.$nextTick(() => {
-      this.indexOrders()
+      this.reindexRows()
       this.applyFilter()
+      this.applySort()
       this.observeOrderListMutations()
+      this.bindStatusChangeDelegation()
     })
   },
+
   beforeUnmount() {
     if (this._observer) this._observer.disconnect()
     if (this.debounceHandle) clearTimeout(this.debounceHandle)
+    this.unbindStatusChangeDelegation()
   },
+
   methods: {
     /* ---------- UX ---------- */
     confirmLogout() {
@@ -174,298 +451,337 @@ export default {
         this.$router.push('/login')
       }
     },
+
     refreshOrders() {
       this.isRefreshing = true
       requestAnimationFrame(() => {
-        this.indexOrders()
+        this.reindexRows()
         this.applyFilter()
+        this.applySort()
         setTimeout(() => (this.isRefreshing = false), 350)
       })
     },
+
+    clearFilters() {
+      this.statusFilter = ''
+      this.applyFilter()
+    },
+
     scrollTo(id) {
       const el = this.$el.querySelector(`#${id}`)
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
     },
-    /* NIEUW: naar beneden */
+
     scrollToBottom() {
       window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' })
     },
+
     onGlobalHotkeys(e) {
       if (e.key === '/') {
         e.preventDefault()
         this.focusSearch()
-      } else if (e.key === 'Escape' && this.query) {
-        this.clearSearch()
+      } else if (e.key === 'Escape' && (this.query || this.statusFilter)) {
+        this.query ? this.clearSearch() : this.clearFilters()
       }
     },
+
     focusSearch() {
       this.$refs.search?.focus()
     },
+
     clearSearch() {
       this.query = ''
       this.applyFilter()
       this.focusSearch()
     },
+
     debouncedFilter() {
       if (this.debounceHandle) clearTimeout(this.debounceHandle)
-      this.debounceHandle = setTimeout(() => this.applyFilter(), 100)
+      this.debounceHandle = setTimeout(() => {
+        this.applyFilter()
+        this.applySort()
+      }, 100)
     },
 
-    /* ---------- Helpers ---------- */
-    norm(s) {
-      return (s || '')
-        .toString()
-        .normalize('NFD')
-        .replace(/\p{Diacritic}/gu, '')
-        .toLowerCase()
-        .trim()
-        .replace(/\s+/g, ' ')
-    },
-
-    // Vind de visuele kaart-root (border/radius/schaduw/padding)
-    findCardRoot(node, gridRoot) {
-      let el = node
-      const visited = new Set()
-      while (el && el !== gridRoot && el.nodeType === 1 && !visited.has(el)) {
-        visited.add(el)
-        const cs = getComputedStyle(el)
-
-        if (cs.display !== 'contents') {
-          const hasRadius =
-            parseFloat(cs.borderTopLeftRadius) >= 8 || parseFloat(cs.borderRadius) >= 8
-          const hasShadow = cs.boxShadow && cs.boxShadow !== 'none'
-          const hasBorder =
-            ['solid', 'dashed', 'double'].includes(cs.borderTopStyle) ||
-            ['solid', 'dashed', 'double'].includes(cs.borderLeftStyle)
-          const pad =
-            parseFloat(cs.paddingTop) +
-            parseFloat(cs.paddingRight) +
-            parseFloat(cs.paddingBottom) +
-            parseFloat(cs.paddingLeft)
-          const hasPadding = pad >= 8
-
-          const bg = cs.backgroundColor
-          const m = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([0-9.]+))?\)/i)
-          const alpha = m ? (m[4] === undefined ? 1 : parseFloat(m[4])) : 1
-          const opaqueBg = alpha > 0.05
-
-          const looksLikeCard = (hasShadow || hasRadius || hasBorder) && hasPadding && opaqueBg
-          if (looksLikeCard) return el
-        }
-
-        el = el.parentElement
-      }
-      return null
-    },
-
-    // Verzamel ALLE kaarten (ook verborgen) zodat filter steeds werkt
-    getOrderCards() {
+    /* ---------- Indexering & selectie ---------- */
+    getOrderRows() {
       const root = this.$refs.ordersGrid
       if (!root) return []
-
       const allNodes = Array.from(root.querySelectorAll('*'))
-      const cardSet = new Set()
-
+      const rows = new Set()
       for (const el of allNodes) {
         const txt = (el.innerText || el.textContent || '').trim()
-        if (txt.length < 10) continue // te weinig inhoud
-        const card = this.findCardRoot(el, root)
-        if (card) cardSet.add(card)
+        if (txt.length < 8) continue
+        const row = findRowRoot(el, root)
+        if (row) rows.add(row)
       }
-
-      return Array.from(cardSet)
+      return Array.from(rows)
     },
 
-    // Klantnaam uit kaart halen
-    extractCustomerName(card) {
-      const byAttr = card.getAttribute('data-customer') || card.getAttribute('data-client') || null
-      if (byAttr) return byAttr
+    reindexRows() {
+      const rows = this.getOrderRows()
+      this._rows = rows
+      this._index.clear()
 
-      const sel = card.querySelector(
-        [
-          '.customer-name',
-          '.customer',
-          '[data-customer]',
-          '[data-client]',
-          '[aria-label*="Klant"]',
-          '[aria-label*="klant"]',
-          '[aria-labelledby*="klant"]',
-          'header h4',
-          'h3',
-          '.title',
-          'strong',
-          'b',
-          '[role="heading"]',
-        ].join(','),
-      )
-      if (sel) {
-        const guess = (sel.innerText || sel.textContent || '').trim()
-        if (/\b\p{L}+\b(?:\s+\p{L}+\b)+/u.test(guess)) return guess
+      for (const el of rows) {
+        const raw = extractCustomerFromRow(el)
+        const norm = baseNorm(raw)
+        const status = extractStatusFromRow(el)
+        el.__customerRaw = raw
+        el.__customerNorm = norm
+        el.__statusNorm = status
+        el.setAttribute('role', el.getAttribute('role') || 'row')
+        if (raw) el.setAttribute('data-index-customer', raw)
+        if (status) el.setAttribute('data-index-status', status)
+        this._index.set(el, { raw, norm, status })
       }
 
-      const text = (card.innerText || card.textContent || '').trim()
-      const m = text.match(/\b(?:Klant|Naam|Customer|Besteller)\s*:\s*([^\n\r|•]+)/i)
-      if (m && m[1]) return m[1].trim()
-
-      return ''
-    },
-
-    // Indexeer kaarten + cache naam
-    indexOrders() {
-      const cards = this.getOrderCards()
-      cards.forEach((el) => {
-        const raw = this.extractCustomerName(el)
-        el.__customerNameRaw = raw
-        el.__customerName = this.norm(raw)
-      })
-      this.totalCount = cards.length
-      this.visibleCount = cards.filter(
+      this.totalCount = rows.length
+      this.visibleCount = rows.filter(
         (el) => !el.classList.contains('is-hidden') && !el.hidden,
       ).length
     },
 
-    // Deel-match standaard (AND op woorden); exact met ="..." of "..."
-    applyFilter() {
-      const cards = this.getOrderCards()
-      const rawQ = (this.query || '').trim()
-      const qNormalized = this.norm(rawQ)
+    /* ---------- Zoeken ---------- */
+    parseQuery(raw) {
+      const q = String(raw || '').trim()
+      if (!q) return { exact: false, terms: [] }
+      if (q.startsWith('=') && q.length > 1) {
+        return { exact: true, phrase: baseNorm(q.slice(1)) }
+      }
+      const first = q[0],
+        last = q[q.length - 1]
+      if ((first === '"' && last === '"') || (first === '“' && last === '”')) {
+        return { exact: true, phrase: baseNorm(q.slice(1, -1)) }
+      }
+      const orParts = q
+        .split(/\s+OR\s+|\|/i)
+        .map((s) => s.trim())
+        .filter(Boolean)
+      const groups = orParts.map((part) => part.split(/\s+/).filter(Boolean))
+      const structured = groups.map((tokens) =>
+        tokens.map((t) => {
+          let kind = 'sub'
+          if (t.startsWith('^')) {
+            kind = 'prefix'
+            t = t.slice(1)
+          }
+          if (t.endsWith('$')) {
+            kind = 'suffix'
+            t = t.slice(0, -1)
+          }
+          return { kind, value: baseNorm(t) }
+        }),
+      )
+      return { exact: false, groups: structured }
+    },
 
-      if (!qNormalized) {
-        for (const el of cards) {
-          el.classList.remove('is-hidden')
-          el.hidden = false
-          el.setAttribute('aria-hidden', 'false')
+    matchesName(nameNorm, q) {
+      if (!nameNorm) return false
+      if (q.exact) return nameNorm === q.phrase
+      const orGroups = q.groups || []
+      if (!orGroups.length) return true
+      outer: for (const andGroup of orGroups) {
+        for (const term of andGroup) {
+          if (!this.matchTerm(nameNorm, term)) continue outer
         }
-        this.visibleCount = cards.length
+        return true
+      }
+      return false
+    },
+
+    matchTerm(nameNorm, term) {
+      const value = term.value
+      if (!value) return true
+      if (term.kind === 'prefix') {
+        if (nameNorm.startsWith(value)) return true
+      } else if (term.kind === 'suffix') {
+        if (nameNorm.endsWith(value)) return true
+      } else {
+        if (nameNorm.includes(value)) return true
+      }
+      const words = nameNorm.split(' ')
+      for (const w of words) {
+        if (this._collator.compare(w, value) === 0) return true
+      }
+      const distCap = value.length <= 4 ? 1 : value.length <= 7 ? 2 : 3
+      for (const w of words) {
+        if (Math.abs(w.length - value.length) > distCap) continue
+        if (levenshtein(w, value) <= distCap) return true
+      }
+      return false
+    },
+
+    /* ---------- Filter + sort ---------- */
+    applyFilter() {
+      const rows = this._rows.length ? this._rows : this.getOrderRows()
+      if (!rows.length) {
+        this.visibleCount = 0
+        this.totalCount = 0
+        return
+      }
+      if (!this._index.size || rows.some((el) => !this._index.has(el))) this.reindexRows()
+
+      const q = this.parseQuery(this.query)
+      const wantedStatus = normalizeStatus(this.statusFilter)
+
+      let shown = 0
+      for (const el of rows) {
+        let idx = this._index.get(el)
+        if (!idx) {
+          idx = {
+            raw: el.__customerRaw || extractCustomerFromRow(el),
+            norm: el.__customerNorm || baseNorm(extractCustomerFromRow(el)),
+            status: el.__statusNorm || extractStatusFromRow(el),
+          }
+          this._index.set(el, idx)
+        }
+
+        // live status her-evalueren (select/wijzigingen)
+        const liveStatus = extractStatusFromRow(el)
+        if (liveStatus && liveStatus !== idx.status) {
+          idx.status = liveStatus
+          el.__statusNorm = liveStatus
+          el.setAttribute('data-index-status', liveStatus)
+        }
+
+        const nameNorm = idx.norm || baseNorm(idx.raw)
+        const hitName = this.matchesName(nameNorm, q)
+        const hitStatus = wantedStatus ? idx.status === wantedStatus : true
+        const hit = hitName && hitStatus
+
+        el.classList.toggle('is-hidden', !hit)
+        el.hidden = !hit
+        el.setAttribute('aria-hidden', hit ? 'false' : 'true')
+        if (hit) shown++
+      }
+      this.totalCount = rows.length
+      this.visibleCount = shown
+    },
+
+    applySort() {
+      const rows = this._rows.length ? this._rows : this.getOrderRows()
+      if (!rows.length) return
+
+      if (this.sortBy === 'none') {
+        rows.forEach((el) => (el.style.order = '0'))
         return
       }
 
-      // Exacte modus?
-      let exact = false
-      let qExact = qNormalized
-      if (rawQ.startsWith('=') && rawQ.length > 1) {
-        exact = true
-        qExact = this.norm(rawQ.slice(1))
-      } else if (
-        (rawQ.startsWith('"') && rawQ.endsWith('"') && rawQ.length > 1) ||
-        (rawQ.startsWith('“') && rawQ.endsWith('”') && rawQ.length > 1)
-      ) {
-        exact = true
-        qExact = this.norm(rawQ.slice(1, -1))
-      }
+      const map = rows.map((el) => {
+        const idx = this._index.get(el) || {}
+        const norm = idx.norm || el.__customerNorm || baseNorm(extractCustomerFromRow(el))
+        return { el, norm }
+      })
 
-      const tokens = exact ? [] : qNormalized.split(' ').filter(Boolean)
+      map.sort((a, b) => {
+        const cmp = this._collator.compare(a.norm, b.norm)
+        return this.sortBy === 'name-asc' ? cmp : -cmp
+      })
 
-      let shown = 0
-      for (const el of cards) {
-        const name = el.__customerName ?? this.norm(this.extractCustomerName(el))
-        let hit = false
-        if (exact) {
-          hit = !!name && name === qExact
-        } else {
-          hit = !!name && tokens.every((t) => name.includes(t))
-        }
-
-        el.classList.toggle('is-hidden', !hit) // CSS fallback (scoped-safe met :deep)
-        el.hidden = !hit // native verbergen
-        el.setAttribute('aria-hidden', hit ? 'false' : 'true')
-
-        if (hit) shown++
-      }
-      this.visibleCount = shown
+      map.forEach((item, order) => {
+        item.el.style.order = String(order)
+      })
     },
 
     observeOrderListMutations() {
       const root = this.$refs.ordersGrid
       if (!root || this._observer) return
-      this._observer = new MutationObserver(() => {
-        this.indexOrders()
+      let scheduled = false
+      const run = () => {
+        scheduled = false
+        this.reindexRows()
         this.applyFilter()
+        this.applySort()
+      }
+      const schedule = () => {
+        if (!scheduled) {
+          scheduled = true
+          ;(window.requestIdleCallback || ((fn) => setTimeout(fn, 60)))(run)
+        }
+      }
+      this._observer = new MutationObserver(schedule)
+      this._observer.observe(root, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+        attributes: true, // ook wanneer data-status/class verandert
       })
-      this._observer.observe(root, { childList: true, subtree: true, characterData: true })
+    },
+
+    // Luister op changes van <select> (status switch) via event delegation
+    bindStatusChangeDelegation() {
+      const root = this.$refs.ordersGrid
+      if (!root) return
+      this._onChange = (e) => {
+        const t = e.target
+        if (!(t instanceof HTMLSelectElement)) return
+        const row = findRowRoot(t, root)
+        if (!row) return
+        const status = extractStatusFromRow(row)
+        const idx = this._index.get(row) || {}
+        idx.status = status
+        row.__statusNorm = status
+        row.setAttribute('data-index-status', status)
+        this._index.set(row, idx)
+        this.applyFilter() // direct her-evalueren
+      }
+      root.addEventListener('change', this._onChange, true)
+    },
+
+    unbindStatusChangeDelegation() {
+      const root = this.$refs.ordersGrid
+      if (root && this._onChange) root.removeEventListener('change', this._onChange, true)
+      this._onChange = null
     },
   },
 }
 </script>
 
+<!-- GLOBAL RESET -->
+<style>
+html,
+body,
+#app {
+  height: 100%;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+* {
+  box-sizing: border-box;
+}
+.sr {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+</style>
+
 <style scoped>
 /* -------------------------------------------------
-   BEN & JERRY’S — DELUXE UI THEME
-   Visueel fris, toegankelijk, responsief, dark-mode aware
+   BEN & JERRY’S — PROFESSIONAL BACKOFFICE TABLE LIST
    ------------------------------------------------- */
-
-/* Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Nunito:wght@400;600;700;800&display=swap');
 
-/* -------------- Design Tokens -------------- */
+/* ---------- Shell ---------- */
 .admin-shell {
-  /* Base palette (light) */
-  --sky: #6ecff6;
-  --navy: #003a8c;
-  --pink: #f9a7c3;
-  --yellow: #ffd166;
-  --mint: #a7f9b7;
-  --choco: #6b4e3d;
-
-  --text: #0d1b2a;
-  --muted: #5b7083;
-
-  --surface: #ffffff;
-  --surface-2: #f7fbff;
-  --surface-3: #eef7ff;
-  --border: #e4eef7;
-
-  --primary: #0a3a7a;
-  --primary-contrast: #fff;
-
-  --radius: 20px;
-  --radius-sm: 14px;
-  --radius-lg: 26px;
-
-  --shadow-xs: 0 1px 3px rgba(13, 27, 42, 0.08);
-  --shadow-sm: 0 2px 10px rgba(13, 27, 42, 0.06);
-  --shadow-md: 0 16px 36px rgba(13, 27, 42, 0.12);
-  --shadow-lg: 0 28px 64px rgba(13, 27, 42, 0.16);
-
-  --ring: 0 0 0 4px rgba(110, 207, 246, 0.28);
-  --ring-strong: 0 0 0 4px rgba(0, 123, 255, 0.35);
-
-  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --ease-snap: cubic-bezier(0.15, 0.9, 0.1, 1);
-
-  color-scheme: light;
-}
-
-@media (prefers-color-scheme: dark) {
-  .admin-shell {
-    --text: #000000;
-    --muted: #a9bbcf;
-
-    --surface: #0f1723;
-    --surface-2: #0b1220;
-    --surface-3: #0e1a2b;
-    --border: #203048;
-
-    --primary: #000000;
-    --primary-contrast: #0a243e;
-
-    --ring: 0 0 0 4px rgba(0, 0, 0, 0.35);
-    --ring-strong: 0 0 0 4px rgba(0, 0, 0, 0.45);
-
-    color-scheme: dark;
-  }
-}
-
-/* -------------- Layout Shell -------------- */
-.admin-shell {
-  min-height: 100vh;
   display: grid;
   grid-template-columns: 300px 1fr;
+  min-height: 100vh;
   background:
     white,
     radial-gradient(80% 48% at 100% 0%, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0) 45%),
-    linear-gradient(180deg, #b8e9fb 0%, #e0f6ff 45%, #ffffff 100%);
-  color: var(--text);
+    linear-gradient(180deg, #f7fbff 0%, #fff 100%);
+  color: #0d1b2a;
   font-family:
     'Nunito',
     system-ui,
@@ -475,96 +791,59 @@ export default {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overscroll-behavior: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  .admin-shell {
-    background:
-      radial-gradient(120% 70% at 0% 0%, rgba(38, 55, 81, 0.35) 0%, rgba(38, 55, 81, 0) 55%),
-      radial-gradient(80% 48% at 100% 0%, rgba(38, 55, 81, 0.25) 0%, rgba(38, 55, 81, 0) 45%),
-      linear-gradient(180deg, #0a1220 0%, #0d1a2c 60%, #0e1420 100%);
-  }
-}
-
-/* Nice selection & scrollbar tweaks */
-::selection {
-  background: rgba(110, 207, 246, 0.55);
-  color: #001123;
-}
-:root {
-  scrollbar-color: rgba(110, 207, 246, 0.6) transparent;
-}
-::-webkit-scrollbar {
-  height: 10px;
-  width: 10px;
-}
-::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-  background: rgba(110, 207, 246, 0.6);
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-/* -------------------- Sidebar -------------------- */
+/* ---------- Sidebar ---------- */
 .sidebar {
   position: sticky;
   top: 0;
   height: 100vh;
-  background: #ffffff;
-  border-right: 3px solid #eeeeee;
-  padding: 1.25rem 1rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  padding: 1.25rem 1rem;
+  background: #fff;
+  border-right: 1px solid #e8eef5;
 }
-
-@media (prefers-color-scheme: dark) {
-  .sidebar {
-    background: linear-gradient(180deg, #0c1524, #0a1220);
-    border-right-color: #000000;
-  }
-}
-
 .brand {
   display: flex;
   align-items: center;
   gap: 0.8rem;
   padding: 1rem;
-  border-radius: 18px;
-  background: linear-gradient(135deg, var(--sky), #9be8ff);
+  border-radius: 14px;
+  background: linear-gradient(135deg, #6ecff6, #9be8ff);
   color: #08315b;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 2px 10px rgba(13, 27, 42, 0.06);
 }
 .logo {
   display: grid;
   place-items: center;
-  width: 54px;
-  height: 54px;
-  border-radius: 14px;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
   background: #fff;
-  font-size: 1.6rem;
+  font-size: 1.4rem;
   box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.05);
 }
 .brand-text {
   line-height: 1.1;
 }
 .brand-text strong {
-  font-family: 'Fredoka', cursive;
-  letter-spacing: 0.2px;
-  font-size: 1.15rem;
   display: block;
+  font-family: 'Fredoka', cursive;
+  font-size: 1.05rem;
+  letter-spacing: 0.2px;
 }
 .brand-text span {
-  color: #000000;
-  font-weight: 700;
+  color: #08315b;
+  font-weight: 800;
   opacity: 0.85;
 }
 
 .nav {
   display: grid;
   gap: 0.35rem;
+  justify-items: start;
 }
 .nav-item {
   width: 100%;
@@ -572,31 +851,35 @@ export default {
   grid-template-columns: 22px 1fr auto;
   gap: 0.75rem;
   align-items: center;
-  text-align: left;
-  padding: 0.75rem 0.9rem;
-  border-radius: 16px;
-  border: 2px solid transparent;
-  background: var(--surface);
-  color: #000000;
+  padding: 0.65rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: #fff;
+  color: #0b2a4a;
   cursor: pointer;
   font-weight: 800;
+  text-align: left;
   transition:
-    background 0.15s var(--ease),
-    transform 0.15s var(--ease),
-    border-color 0.15s var(--ease),
-    box-shadow 0.15s var(--ease);
+    background 0.15s,
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.nav-ico {
+  width: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .nav-item:hover {
-  background: #f2fbff;
-  border-color: #000000;
-  transform: translateX(4px);
-  box-shadow: var(--shadow-xs);
+  background: #f7fbff;
+  border-color: #cfe6fb;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
 }
 .nav-item.active,
-.nav-item[aria-current='page'] {
+[aria-current='page'] {
   border-color: #1d4754;
-  background: linear-gradient(180deg, #fff, #f2faff);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  background: linear-gradient(180deg, #fff, #f5f9ff);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
 }
 .nav-item[disabled] {
   opacity: 0.5;
@@ -604,167 +887,153 @@ export default {
 }
 .badge {
   justify-self: end;
-  font-size: 0.72rem;
-  padding: 0.2rem 0.5rem;
+  padding: 0.18rem 0.5rem;
   border-radius: 999px;
+  font-size: 0.72rem;
   background: #fff2f8;
   color: #b9467d;
   border: 1px dashed #ffd1e7;
 }
-
 .sidebar-spacer {
   flex: 1;
 }
 
-.btn-logout {
-  width: 100%;
-  border: 0;
-  background: linear-gradient(135deg, #ffe8ef, #fff);
-  color: #b0224a;
-  padding: 0.7rem 1rem;
-  border-radius: 14px;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  transition:
-    transform 0.12s var(--ease),
-    box-shadow 0.12s var(--ease);
-}
-.btn-logout:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
-}
-.btn-logout:focus-visible {
-  outline: none;
-  box-shadow: var(--ring-strong);
-}
-
-/* --------------------- Topbar --------------------- */
+/* ---------- Content + Topbar ---------- */
 .content {
   min-width: 0;
   display: grid;
   grid-template-rows: auto 1fr auto;
 }
-
 .topbar {
   position: sticky;
   top: 0;
   z-index: 10;
-  backdrop-filter: saturate(140%) blur(8px);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.85));
-  border-bottom: 2px solid #dbefff;
-  padding: 1rem 2rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 0.9rem 1.5rem;
+  background: linear-gradient(180deg, #164b77, #1a5a8c);
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(22, 75, 119, 0.25);
 }
-@media (prefers-color-scheme: dark) {
-  .topbar {
-    background: linear-gradient(180deg, rgba(12, 21, 36, 0.7), rgba(12, 21, 36, 0.7));
-    border-bottom-color: #183252;
-  }
-}
-.title-wrap h1 {
+.topbar-title {
   margin: 0;
+  color: #fff;
   font-family: 'Fredoka', cursive;
-  letter-spacing: 0.4px;
-  font-size: 1.7rem;
-  color: #0a2f57;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
+  font-size: 1.6rem;
+  letter-spacing: 0.3px;
 }
-@media (prefers-color-scheme: dark) {
-  .title-wrap h1 {
-    color: #bfe5ff;
-    text-shadow: none;
-  }
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
 }
-.subtitle {
-  margin: 0.15rem 0 0;
-  color: var(--muted);
-  font-weight: 700;
-}
-
-.btn {
+.refresh-link {
   appearance: none;
   border: 0;
-  background: var(--surface);
-  color: var(--text);
-  padding: 0.65rem 1.1rem;
-  border-radius: 999px;
-  font-weight: 800;
+  background: transparent;
+  padding: 0;
+  color: #f2f7fc;
+  font-weight: 900;
   cursor: pointer;
-  box-shadow: var(--shadow-sm);
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+.refresh-ico {
+  font-size: 1.05rem;
+  transform: translateY(-1px);
+  display: inline-flex;
+}
+.refresh-ico.is-rotating {
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: translateY(-1px) rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .refresh-ico.is-rotating {
+    animation: none;
+  }
+}
+.btn {
+  appearance: none;
+  border: 1px solid #d9e4ee;
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  background: #fff;
+  color: #0d1b2a;
+  cursor: pointer;
+  font-weight: 800;
   transition:
-    transform 0.12s var(--ease),
-    box-shadow 0.12s var(--ease),
-    filter 0.12s var(--ease),
-    background 0.12s var(--ease);
+    box-shadow 0.14s ease,
+    background 0.14s ease,
+    border-color 0.14s ease,
+    color 0.14s ease;
 }
 .btn:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 10px 24px rgba(13, 27, 42, 0.1);
+  border-color: #cfe2f3;
 }
 .btn:focus-visible {
   outline: none;
-  box-shadow: var(--ring);
+  box-shadow:
+    0 0 0 4px rgba(110, 207, 246, 0.28),
+    0 6px 18px rgba(13, 27, 42, 0.1);
 }
 .btn.primary {
-  color: #08315b;
-  background: linear-gradient(135deg, #ffe1ef, #d8f5ff);
-  border: 2px solid #cdefff;
+  background: #0a3056;
+  color: #fff;
+  border-color: #0a3056;
 }
 .btn.ghost {
   background: transparent;
   box-shadow: none;
 }
+.btn.logout {
+  background: #6ecff6;
+  color: #272626;
+  font-weight: 900;
+  border-color: #56b8e1;
+  transition:
+    box-shadow 0.18s,
+    background 0.18s,
+    border-color 0.18s;
+}
+.btn.logout:hover {
+  box-shadow:
+    0 0 0 4px rgba(110, 207, 246, 0.22),
+    0 6px 18px rgba(13, 27, 42, 0.12);
+  border-color: #45acd4;
+  background: linear-gradient(180deg, #74d3f8 0%, #67c7f1 100%);
+}
+.btn.logout:active {
+  box-shadow: 0 0 0 3px rgba(110, 207, 246, 0.25) inset;
+}
+.btn:disabled,
+.btn[aria-disabled='true'] {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
 
-/* Refresh button: lightweight spinner when busy */
-.btn[aria-busy='true'] {
-  position: relative;
-  pointer-events: none;
-  opacity: 0.85;
-}
-.btn[aria-busy='true']::after {
-  content: '';
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 2px solid rgba(13, 27, 42, 0.15);
-  border-top-color: var(--sky);
-  animation: spin 0.75s linear infinite;
-}
-@keyframes spin {
-  to {
-    transform: translateY(-50%) rotate(360deg);
-  }
-}
-
-/* --------------------- Panel --------------------- */
+/* ---------- Panel & Controls ---------- */
 .panel {
-  margin: 1.5rem 2rem 2rem;
+  margin: 1.25rem 1.5rem 2rem;
   padding: 0 0 2rem;
 }
-
-/* Paneel-header: geen titel meer, zoekbalk gebruikt de volle breedte */
 .panel-header {
-  display: block; /* i.p.v. grid met 2 kolommen */
-  margin: 1.25rem 0 0.75rem;
-}
-.controls--inline {
-  width: 100%;
+  margin: 1rem 0 0.25rem;
 }
 
 .controls {
   display: grid;
-  grid-template-columns: 1fr auto auto; /* zoekveld = 1fr => maximaal breed */
+  grid-template-columns: 1fr auto auto auto;
   gap: 12px;
   align-items: center;
 }
-
 .search-input {
   position: relative;
   display: flex;
@@ -775,59 +1044,62 @@ export default {
   left: 12px;
   pointer-events: none;
   opacity: 0.82;
-  transform: translateY(-1px);
 }
 .search-input input[type='search'] {
   width: 100%;
-  appearance: none;
-  background: var(--surface);
-  border: 2px solid #cfe9ff;
-  border-radius: 14px;
-  padding: 0.75rem 2.2rem 0.75rem 2.2rem;
+  padding: 0.6rem 2.2rem;
+  border: 1px solid #d6e2ee;
+  border-radius: 10px;
+  background: #fff;
   line-height: 1.35;
   font-size: 1rem;
   font-weight: 800;
   transition:
-    border-color 0.12s var(--ease),
-    box-shadow 0.12s var(--ease),
-    background 0.12s var(--ease);
+    border-color 0.12s,
+    box-shadow 0.12s,
+    background 0.12s;
 }
 .search-input input::placeholder {
-  color: var(--muted);
+  color: #5b7083;
   font-weight: 700;
   opacity: 0.8;
 }
 .search-input input:focus {
   outline: none;
-  border-color: #aee2ff;
-  box-shadow: var(--ring);
-  background: #fff;
+  border-color: #9fd8ff;
+  box-shadow: 0 0 0 4px rgba(110, 207, 246, 0.24);
 }
 .btn-clear {
   position: absolute;
   right: 8px;
+  padding: 0.2rem 0.4rem;
   border: 0;
+  border-radius: 8px;
   background: transparent;
   font-size: 1.1rem;
   cursor: pointer;
-  padding: 0.25rem 0.4rem;
-  border-radius: 8px;
 }
-.btn-clear:hover {
-  filter: contrast(1.1);
+
+.filters {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
-.btn-clear:focus-visible {
-  outline: none;
-  box-shadow: var(--ring);
+.select select {
+  padding: 0.56rem 0.8rem;
+  border: 1px solid #d6e2ee;
+  border-radius: 10px;
+  background: #fff;
+  font-weight: 800;
 }
 
 .control-meta {
-  color: var(--muted);
+  color: #5b7083;
   font-weight: 800;
   white-space: nowrap;
 }
 .control-meta .muted {
-  color: var(--muted);
+  color: #5b7083;
   font-weight: 700;
 }
 .control-actions {
@@ -835,27 +1107,82 @@ export default {
   gap: 8px;
 }
 
-/* -------------------- Orders grid ---------------- */
+/* Subheader */
+.panel-subheader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.2rem 0.35rem;
+  margin: 0.2rem 0 0.4rem;
+  color: #0b2a4a;
+  font-weight: 900;
+}
+.panel-subheader.sticky {
+  position: sticky;
+  top: 62px;
+  z-index: 5;
+  background: #fff;
+  border-bottom: 1px solid #e8eef5;
+}
+.subheader-dot {
+  font-size: 1.4rem;
+  color: #79c2f3;
+  transform: translateY(-1px);
+}
+.subheader-title {
+  margin: 0;
+  font-size: 1.02rem;
+  letter-spacing: 0.2px;
+}
+.chips {
+  display: flex;
+  gap: 6px;
+  margin-left: 0.5rem;
+}
+.chip {
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid #d6e2ee;
+  background: #f7fbff;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+/* ---------- Tabel ---------- */
 .panel-body {
-  background: var(--surface);
-  border: 2px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-lg);
-  padding: 1.5rem;
+  background: #fff;
+  border: 1px solid #e8eef5;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(13, 27, 42, 0.08);
+  overflow: hidden;
+}
+.table-head {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.2fr) minmax(180px, 1fr) 160px 180px;
+  gap: 0;
+  align-items: center;
+  padding: 0.65rem 1rem;
+  background: #f7faff;
+  border-bottom: 1px solid #e8eef5;
+  font-weight: 900;
+  color: #0b2a4a;
+}
+.th {
+  opacity: 0.9;
+  font-size: 0.88rem;
+}
+.th--actions {
+  justify-self: end;
 }
 
 .orders-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(460px, 1fr));
-  gap: 24px;
-  align-content: start;
-  container-type: inline-size; /* container queries ready */
+  display: flex;
+  flex-direction: column;
 }
 .orders-grid > * {
   display: contents;
 }
 
-/* Kaarten (generic selectors zodat <OrderList/> vrij is) */
 .orders-grid :deep(.order),
 .orders-grid :deep(.order-item),
 .orders-grid :deep(.order-card),
@@ -863,156 +1190,145 @@ export default {
 .orders-grid :deep(article),
 .orders-grid :deep(section),
 .orders-grid :deep(li) {
-  background:
-    radial-gradient(120px 60px at 105% 110%, rgba(255, 241, 228, 0.65), transparent 60%),
-    radial-gradient(100px 60px at -5% -15%, rgba(233, 255, 248, 0.75), transparent 60%),
-    var(--surface);
-  border: 2px solid #e7f2ff;
-  border-radius: 18px;
-  padding: 1.15rem 1.2rem;
-  box-shadow: var(--shadow-sm);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-height: 140px;
-  transition:
-    transform 0.12s var(--ease),
-    border-color 0.12s var(--ease),
-    box-shadow 0.12s var(--ease),
-    background 0.12s var(--ease);
+  display: grid;
+  grid-template-columns: minmax(220px, 1.2fr) minmax(180px, 1fr) 160px 180px;
+  gap: 0;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: #fff;
+  border-bottom: 1px solid #eef3f8;
+  line-height: 1.25;
 }
-@media (prefers-color-scheme: dark) {
-  .orders-grid :deep(.order),
-  .orders-grid :deep(.order-item),
-  .orders-grid :deep(.order-card),
-  .orders-grid :deep(.list-item),
-  .orders-grid :deep(article),
-  .orders-grid :deep(section),
-  .orders-grid :deep(li) {
-    background:
-      radial-gradient(140px 80px at 108% 115%, rgba(255, 255, 255, 0.05), transparent 60%),
-      radial-gradient(120px 70px at -8% -20%, rgba(255, 255, 255, 0.045), transparent 60%),
-      var(--surface-2);
-    border-color: #274261;
-  }
+.orders-grid :deep(.order:nth-child(odd)),
+.orders-grid :deep(.order-item:nth-child(odd)),
+.orders-grid :deep(.order-card:nth-child(odd)),
+.orders-grid :deep(.list-item:nth-child(odd)),
+.orders-grid :deep(article:nth-child(odd)),
+.orders-grid :deep(section:nth-child(odd)),
+.orders-grid :deep(li:nth-child(odd)) {
+  background: #fcfdff;
 }
-
 .orders-grid :deep(.order:hover),
+.orders-grid :deep(.order-item:hover),
 .orders-grid :deep(.order-card:hover),
+.orders-grid :deep(.list-item:hover),
 .orders-grid :deep(article:hover),
 .orders-grid :deep(section:hover),
 .orders-grid :deep(li:hover) {
-  transform: translateY(-3px);
-  border-color: #cde8ff;
-  box-shadow: var(--shadow-md);
+  background: #f6fbff;
 }
 
 .orders-grid :deep(h3),
 .orders-grid :deep(.title),
-.orders-grid :deep(header h4) {
-  margin: 0 0 6px 0;
-  font-size: 1.22rem;
-  line-height: 1.25;
+.orders-grid :deep(header h4),
+.orders-grid :deep(.customer-name) {
+  margin: 0;
   font-family: 'Fredoka', cursive;
-  color: #0a2f57;
+  font-size: 1rem;
+  color: #0b2a4a;
+  font-weight: 700;
   letter-spacing: 0.2px;
 }
-@media (prefers-color-scheme: dark) {
-  .orders-grid :deep(h3),
-  .orders-grid :deep(.title),
-  .orders-grid :deep(header h4) {
-    color: #bfe5ff;
-  }
-}
-.orders-grid :deep(p) {
-  color: var(--muted);
+.orders-grid :deep(p),
+.orders-grid :deep(.meta),
+.orders-grid :deep(.description) {
   margin: 0;
-  font-size: 1rem;
+  color: #425a70;
+  font-size: 0.95rem;
   font-weight: 700;
+  opacity: 0.95;
 }
 
-/* Inputs & selects in kaart */
-.orders-grid :deep(select),
-.orders-grid :deep(input[type='text']),
-.orders-grid :deep(input[type='number']) {
-  appearance: none;
-  background: var(--surface);
-  border: 2px solid #e4eef9;
-  border-radius: 12px;
-  padding: 0.55rem 0.7rem;
-  line-height: 1.3;
-  font-size: 1rem;
-  font-weight: 700;
-  transition:
-    border-color 0.12s var(--ease),
-    box-shadow 0.12s var(--ease),
-    background 0.12s var(--ease);
-  accent-color: var(--sky);
-}
-.orders-grid :deep(select:focus),
-.orders-grid :deep(input:focus) {
-  outline: none;
-  border-color: #cfe4ff;
-  box-shadow: var(--ring);
-  background: #fff;
-}
-
-/* Buttons in kaart */
-.orders-grid :deep(button) {
-  appearance: none;
-  border: 2px solid #e6eef8;
-  background: linear-gradient(180deg, var(--surface), #f8fbff);
-  color: #0b345e;
-  padding: 0.55rem 0.9rem;
+/* Status badge + kleuren */
+.orders-grid :deep(.status),
+.orders-grid :deep(.status-badge) {
+  justify-self: start;
+  padding: 0.28rem 0.6rem;
   border-radius: 999px;
-  cursor: pointer;
   font-weight: 900;
+  font-size: 0.8rem;
+  background: #eef6ff;
+  color: #0b345e;
+  border: 1px solid #d6eaff;
+  white-space: nowrap;
+}
+.orders-grid :deep([data-status='verzonden' i]),
+.orders-grid :deep(.status-verzonden) {
+  background: #effaf5;
+  color: #0b3d2c;
+  border-color: #cdeee0;
+}
+.orders-grid :deep([data-status='geannuleerd' i]),
+.orders-grid :deep(.status-geannuleerd) {
+  background: #fff0f4;
+  color: #6f1233;
+  border-color: #ffd5e1;
+}
+.orders-grid :deep([data-status='te verwerken' i]),
+.orders-grid :deep(.status-te-verwerken) {
+  background: #fff8e8;
+  color: #5a3a03;
+  border-color: #ffe2a6;
+}
+
+/* Acties */
+.orders-grid :deep(button),
+.orders-grid :deep(a.button) {
+  padding: 0.4rem 0.7rem;
+  border: 1px solid #d9e4ee;
+  border-radius: 10px;
+  background: #fff;
+  color: #0b345e;
+  font-weight: 900;
+  cursor: pointer;
+  text-decoration: none;
+  justify-self: end;
   transition:
-    transform 0.12s var(--ease),
-    box-shadow 0.12s var(--ease),
-    border-color 0.12s var(--ease),
-    background 0.12s var(--ease);
+    box-shadow 0.12s,
+    border-color 0.12s,
+    background 0.12s;
 }
-.orders-grid :deep(button:hover) {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-sm);
-  border-color: #d7e9ff;
+.orders-grid :deep(button:hover),
+.orders-grid :deep(a.button:hover) {
+  border-color: #9bd9ff;
+  box-shadow: 0 6px 14px rgba(13, 27, 42, 0.08);
 }
-.orders-grid :deep(button:focus-visible) {
+.orders-grid :deep(button:focus-visible),
+.orders-grid :deep(a.button:focus-visible) {
   outline: none;
-  box-shadow: var(--ring);
+  box-shadow: 0 0 0 4px rgba(110, 207, 246, 0.28);
 }
 .orders-grid :deep(button.danger),
 .orders-grid :deep(button[aria-label*='Verwijderen']),
 .orders-grid :deep(button[data-variant='danger']) {
   border-color: #ffd8e5;
-  background: linear-gradient(180deg, var(--surface), #fff5f8);
+  background: #fff5f8;
   color: #b11d49;
 }
 
-/* Verbergen bij filter (scoped → via :deep) */
+/* Hidden */
 .orders-grid :deep(.is-hidden) {
   display: none !important;
 }
 
 /* Lege-staat */
 .empty-state {
-  grid-column: 1 / -1;
-  border: 3px dashed #d6ecff;
-  border-radius: 18px;
-  padding: 2rem;
+  margin: 0.85rem;
+  padding: 1.2rem;
+  border: 1px dashed #d6ecff;
+  border-radius: 10px;
   text-align: center;
-  background: linear-gradient(180deg, #f0fff7, #ffffff);
-}
-@media (prefers-color-scheme: dark) {
-  .empty-state {
-    background: linear-gradient(180deg, #0b1c15, #0f1723);
-    border-color: #265b6b;
-  }
+  background: linear-gradient(180deg, #f7fffb, #fff);
 }
 .empty-state .empty-emoji {
-  font-size: 2rem;
   margin-bottom: 0.25rem;
+  font-size: 2rem;
+}
+.empty-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 0.5rem;
 }
 
 /* Footer */
@@ -1020,39 +1336,32 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.5rem 2rem;
-  color: var(--muted);
+  padding: 1.2rem 2rem;
+  color: #5b7083;
   font-weight: 800;
 }
 
-/* ---------- Responsiveness ---------- */
-@container (max-width: 980px) {
-  .orders-grid {
-    gap: 18px;
-  }
-}
-@media (max-width: 1440px) {
-  .orders-grid {
-    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
-  }
-}
+/* ---------- Responsive ---------- */
 @media (max-width: 1180px) {
   .admin-shell {
     grid-template-columns: 260px 1fr;
   }
   .panel {
-    margin: 1rem 1.25rem 1.5rem;
-  }
-  .panel-header {
-    margin: 1rem 0 0.5rem;
+    margin: 1rem 1rem 1.5rem;
   }
   .controls {
-    grid-template-columns: 1fr auto; /* knoppen wrappen beter op small */
+    grid-template-columns: 1fr auto auto;
     grid-auto-flow: row;
   }
-  .orders-grid {
-    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-    gap: 20px;
+  .table-head,
+  .orders-grid :deep(.order),
+  .orders-grid :deep(.order-item),
+  .orders-grid :deep(.order-card),
+  .orders-grid :deep(.list-item),
+  .orders-grid :deep(article),
+  .orders-grid :deep(section),
+  .orders-grid :deep(li) {
+    grid-template-columns: 1.25fr 1fr 140px 150px;
   }
 }
 @media (max-width: 860px) {
@@ -1063,7 +1372,7 @@ export default {
     position: static;
     height: auto;
     border-right: 0;
-    border-bottom: 2px solid #dbefff;
+    border-bottom: 1px solid #e8eef5;
   }
   .topbar {
     position: static;
@@ -1071,25 +1380,22 @@ export default {
   .only-desktop {
     display: none;
   }
-  .orders-grid {
-    grid-template-columns: 1fr;
-    gap: 14px;
+  .table-head {
+    display: none;
   }
-}
-
-/* ---------- Accessibility & Motion ---------- */
-.btn,
-.nav-item,
-.orders-grid :deep(button),
-.orders-grid :deep(.order),
-.btn-logout {
-  will-change: transform, box-shadow;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition: none !important;
-    animation: none !important;
+  .orders-grid :deep(.order),
+  .orders-grid :deep(.order-item),
+  .orders-grid :deep(.order-card),
+  .orders-grid :deep(.list-item),
+  .orders-grid :deep(article),
+  .orders-grid :deep(section),
+  .orders-grid :deep(li) {
+    grid-template-columns: 1fr;
+    gap: 6px 10px;
+    padding: 0.8rem 1rem;
+  }
+  .orders-grid :deep(.order > *:last-child) {
+    justify-self: start;
   }
 }
 </style>

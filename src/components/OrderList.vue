@@ -1,6 +1,5 @@
 <template>
   <div>
-    <h2>📦 Alle bestellingen</h2>
 
     <p v-if="error" class="error">{{ error }}</p>
 
