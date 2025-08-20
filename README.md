@@ -40,10 +40,18 @@ src/
 ├── router/               # Vue Router configuratie
 ├── App.vue               # Rootcomponent
 └── main.js               # App initialisatie
-``` 
+```
 
 ## 🚀 Starten
 
 ```bash
 npm install
 npm run dev
+```
+
+---
+
+## 🍨 Live Backoffice
+
+De backoffice is live beschikbaar via Render:  
+👉 [Ben & Jerry's Backoffice](https://ben-jerrys-backoffice.onrender.com/)
