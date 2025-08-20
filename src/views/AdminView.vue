@@ -453,13 +453,12 @@ export default {
     },
 
     refreshOrders() {
+      // Zelfde effect als browser refresh (Ctrl+R)
       this.isRefreshing = true
-      requestAnimationFrame(() => {
-        this.reindexRows()
-        this.applyFilter()
-        this.applySort()
-        setTimeout(() => (this.isRefreshing = false), 350)
-      })
+      // Heel korte delay zodat de "Bezig…" UI zichtbaar is
+      setTimeout(() => {
+        window.location.reload()
+      }, 50)
     },
 
     clearFilters() {
@@ -994,7 +993,7 @@ body {
 }
 .btn.logout {
   background: #6ecff6;
-  color: #272626;
+  color: #ffffff;
   font-weight: 900;
   border-color: #56b8e1;
   transition:
