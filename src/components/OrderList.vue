@@ -27,21 +27,20 @@ export default {
       this.error = ''
       this.loading = true
       try {
-        // als er geen token is → naar login
         const token = localStorage.getItem('token')
         if (!token) {
           this.$router.replace('/login')
           return
         }
 
-        // apiFetch geeft direct JSON terug
+      
         const data = await apiFetch('/api/orders')
 
         this.orders = Array.isArray(data) ? data : []
       } catch (err) {
         console.error('Fout bij ophalen bestellingen:', err)
 
-        // Bij 401 werd geen token gestuurd of verlopen → naar login
+       
         if (
           String(err?.message || '')
             .toLowerCase()

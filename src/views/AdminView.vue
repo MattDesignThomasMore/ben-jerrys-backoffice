@@ -188,7 +188,7 @@
             </div>
 
             <div class="orders-grid" ref="ordersGrid">
-              <!-- ✅ ref toegevoegd zodat de parent fetchOrders kan aanroepen -->
+             
               <OrderList ref="orderList" />
 
               <div
@@ -418,7 +418,6 @@ export default {
   },
 
   mounted() {
-    // ✅ Token-check: zonder token naar login
     const token = localStorage.getItem('token')
     if (!token) {
       this.$router.replace('/login')
@@ -462,7 +461,7 @@ export default {
       }
     },
 
-    // ✅ Zachte refresh die ook op Render werkt (geen harde reload/404)
+    
     async refreshOrders() {
       if (this.isRefreshing) return
       this.isRefreshing = true
@@ -471,18 +470,17 @@ export default {
         if (child && typeof child.fetchOrders === 'function') {
           await child.fetchOrders()
         } else {
-          // fallback: zachte route-refresh met query param (forceert re-render)
           const q = { ...(this.$route.query || {}), _r: Date.now() }
           await this.$router.replace({ path: this.$route.path, query: q })
         }
-        // index/filter/sort opnieuw toepassen na DOM update
+        
         this.$nextTick(() => {
           this.reindexRows()
           this.applyFilter()
           this.applySort()
         })
       } catch (_) {
-        // geen UI-fout nodig; knop stopt met draaien
+        
       } finally {
         this.isRefreshing = false
       }

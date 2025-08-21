@@ -1,5 +1,3 @@
-// src/lib/api.js
-// Bepaalt altijd een geldige base URL, zowel lokaal als op Render.
 const API =
   import.meta.env?.VITE_API_BASE_URL ||
   (location.hostname === 'localhost'
@@ -27,16 +25,16 @@ export async function apiFetch(path, options = {}) {
   try {
     res = await fetch(url, { ...options, headers })
   } catch (e) {
-    // Netwerk/CORS etc.
+    
     throw new Error(`Netwerkfout naar ${url.split('?')[0]}`)
   }
 
-  // Probeer body te lezen zodat we zinvolle fout tonen
+
   let data = null
   try {
     data = await res.clone().json()
   } catch {
-    // ignore; kan bv. HTML (404) zijn
+    
   }
 
   if (!res.ok) {

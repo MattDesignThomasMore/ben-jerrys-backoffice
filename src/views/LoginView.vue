@@ -63,7 +63,7 @@
 </template>
 
 <script>
-import { apiFetch } from '@/lib/api' // gebruikt VITE_API_BASE_URL + fallback en voegt headers toe
+import { apiFetch } from '@/lib/api' 
 
 export default {
   name: 'LoginView',
@@ -92,7 +92,7 @@ export default {
           }),
         })
 
-        // apiFetch geeft direct de JSON terug (met { token })
+     
         localStorage.setItem('token', data.token)
         this.$router.replace('/admin')
       } catch (e) {

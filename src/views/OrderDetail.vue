@@ -275,7 +275,6 @@ export default {
 
     try {
       const id = this.$route.params.id
-      // apiFetch geeft al JSON terug of gooit een fout
       const data = await apiFetch(`/api/orders/${id}`, { method: 'GET' })
       this.order = data || {}
     } catch (err) {
@@ -323,7 +322,6 @@ export default {
       try {
         this.isSaving = true
         this.errorMsg = ''
-        // Ook hier: apiFetch retourneert JSON; gebruik het en ga verder
         await apiFetch(`/api/orders/${this.order._id}`, {
           method: 'PUT',
           body: JSON.stringify({ status: this.order.status }),
