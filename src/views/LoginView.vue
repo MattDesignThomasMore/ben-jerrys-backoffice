@@ -46,7 +46,9 @@
             </svg>
           </div>
 
-          <button type="submit">Login</button>
+          <button type="submit" :disabled="loading">
+            {{ loading ? 'Bezig...' : 'Login' }}
+          </button>
 
           <p class="admin-note">
             Alleen voor beheerders · gekoppeld aan de Ben &amp; Jerry’s Ice Configurator. Klanten
@@ -61,6 +63,8 @@
 </template>
 
 <script>
+import { apiFetch } from '@/lib/api' // gebruikt VITE_API_BASE_URL + fallback en voegt headers toe
+
 export default {
   name: 'LoginView',
   data() {
@@ -69,6 +73,7 @@ export default {
       password: '',
       showPassword: false,
       error: '',
+      loading: false,
     }
   },
   methods: {
@@ -76,18 +81,24 @@ export default {
       this.showPassword = !this.showPassword
     },
     async handleLogin() {
+      this.error = ''
+      this.loading = true
       try {
-        const res = await fetch('http://localhost:5000/api/auth/login', {
+        const data = await apiFetch('/api/auth/login', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: this.email, password: this.password }),
+          body: JSON.stringify({
+            email: this.email.trim(),
+            password: this.password,
+          }),
         })
-        if (!res.ok) throw new Error('Login mislukt')
-        const data = await res.json()
+
+        // apiFetch geeft direct de JSON terug (met { token })
         localStorage.setItem('token', data.token)
-        this.$router.push('/admin')
-      } catch (err) {
-        this.error = err.message
+        this.$router.replace('/admin')
+      } catch (e) {
+        this.error = e.message || 'Login mislukt'
+      } finally {
+        this.loading = false
       }
     },
   },
@@ -138,13 +149,6 @@ h2 {
   font-weight: 700;
   color: #2e3a59;
   margin-bottom: 2rem;
-}
-
-.subtle-note {
-  text-align: center;
-  font-size: 0.9rem;
-  color: #6b7280;
-  margin-bottom: 1.6rem;
 }
 
 form {
@@ -217,7 +221,12 @@ button {
   box-shadow: 0 6px 24px rgba(79, 172, 254, 0.25);
 }
 
-button:hover {
+button[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+button:hover:not([disabled]) {
   background-color: #3d9ff5;
   transform: translateY(-2px);
   box-shadow: 0 10px 30px rgba(79, 172, 254, 0.35);

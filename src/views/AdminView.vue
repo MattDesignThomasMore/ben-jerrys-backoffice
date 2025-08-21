@@ -417,9 +417,17 @@ export default {
   },
 
   mounted() {
+    // ✅ Extra safety: als er geen token is, direct naar login
+    const token = localStorage.getItem('token')
+    if (!token) {
+      this.$router.replace('/login')
+      return
+    }
+
     try {
       this.prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     } catch (_) {}
+
     this.$nextTick(() => {
       this.reindexRows()
       this.applyFilter()
@@ -449,15 +457,18 @@ export default {
     confirmLogout() {
       if (confirm('Weet je zeker dat je wilt uitloggen?')) {
         localStorage.removeItem('token')
-        this.$router.push('/login')
+        this.$router.replace('/login') // replace i.p.v. push om back-stack te voorkomen
       }
     },
 
+    // Optioneel mooier: in plaats van reload, vraag het kind component te refreshem
     refreshOrders() {
       this.isRefreshing = true
+      // eenvoudig: herlaad pagina
       setTimeout(() => {
         window.location.reload()
       }, 50)
+      // Wil je zonder reload? Geef OrderList een ref en roep this.$refs.orderList.fetchOrders() aan.
     },
 
     clearFilters() {
@@ -542,9 +553,7 @@ export default {
     parseQuery(raw) {
       const q = String(raw || '').trim()
       if (!q) return { exact: false, terms: [] }
-      if (q.startsWith('=') && q.length > 1) {
-        return { exact: true, phrase: baseNorm(q.slice(1)) }
-      }
+      if (q.startsWith('=') && q.length > 1) return { exact: true, phrase: baseNorm(q.slice(1)) }
       const first = q[0],
         last = q[q.length - 1]
       if ((first === '"' && last === '"') || (first === '“' && last === '”')) {

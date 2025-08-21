@@ -242,6 +242,8 @@
 </template>
 
 <script>
+import { apiFetch } from '@/lib/api'
+
 export default {
   name: 'OrderDetail',
   data() {
@@ -269,14 +271,13 @@ export default {
   async mounted() {
     try {
       this.prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    } catch (_) {}
+    } catch {}
+
     try {
       const id = this.$route.params.id
-      const res = await fetch(`http://localhost:5000/api/orders/${id}`, {
-        headers: { Authorization: 'Bearer ' + localStorage.getItem('token') },
-      })
-      if (!res.ok) throw new Error('Kon bestelling niet ophalen (' + res.status + ')')
-      this.order = await res.json()
+      // apiFetch geeft al JSON terug of gooit een fout
+      const data = await apiFetch(`/api/orders/${id}`, { method: 'GET' })
+      this.order = data || {}
     } catch (err) {
       console.error(err)
       this.errorMsg = 'Kan bestelling niet laden. Probeer het later opnieuw.'
@@ -322,15 +323,11 @@ export default {
       try {
         this.isSaving = true
         this.errorMsg = ''
-        const res = await fetch(`http://localhost:5000/api/orders/${this.order._id}`, {
+        // Ook hier: apiFetch retourneert JSON; gebruik het en ga verder
+        await apiFetch(`/api/orders/${this.order._id}`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: 'Bearer ' + localStorage.getItem('token'),
-          },
           body: JSON.stringify({ status: this.order.status }),
         })
-        if (!res.ok) throw new Error('Update mislukt (' + res.status + ')')
         this.updatedAt = Date.now()
         this.saveOk = true
         setTimeout(() => (this.saveOk = false), 1500)
