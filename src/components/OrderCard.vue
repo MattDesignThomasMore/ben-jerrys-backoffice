@@ -2,7 +2,6 @@
   <div class="order-card">
     <h3>{{ order.name }}</h3>
     <p>{{ order.flavor }} met {{ order.topping }}</p>
-
     <p>
       Status:
       <select v-model="selectedStatus" @change="updateStatus" :disabled="loading">
@@ -11,7 +10,6 @@
         <option value="geannuleerd">Geannuleerd</option>
       </select>
     </p>
-
     <button @click="deleteOrder" :disabled="loading">🗑 Verwijderen</button>
     <router-link :to="`/admin/order/${order._id}`">🔎 Bekijk details</router-link>
 
@@ -39,45 +37,24 @@ export default {
   },
   methods: {
     async updateStatus() {
-      if (!this.order?._id) return
+      if (!this.order._id) return
       this.loading = true
       this.error = ''
-      const previous = this.order.status
-
       try {
-        // Optimistic UI
-        this.$set
-          ? this.$set(this.order, 'status', this.selectedStatus)
-          : (this.order.status = this.selectedStatus)
-
-        // apiFetch geeft direct JSON terug of gooit een fout
         await apiFetch(`/api/orders/${this.order._id}`, {
           method: 'PUT',
           body: JSON.stringify({ status: this.selectedStatus }),
         })
-
         this.$emit('refresh')
       } catch (err) {
         console.error('Update-fout:', err)
-        this.error = err?.message || 'Kan status niet bijwerken.'
-        // rollback
-        this.selectedStatus = previous
-        this.$set ? this.$set(this.order, 'status', previous) : (this.order.status = previous)
-
-        // Bij verlopen/ongeldige token terug naar login
-        if (String(err.message).includes('401')) {
-          localStorage.removeItem('token')
-          this.$router.replace('/login')
-        }
+        this.error = 'Kan status niet bijwerken.'
       } finally {
         this.loading = false
       }
     },
-
     async deleteOrder() {
-      if (!this.order?._id) return
-      if (!confirm('Deze bestelling verwijderen?')) return
-
+      if (!this.order._id) return
       this.loading = true
       this.error = ''
       try {
@@ -87,11 +64,7 @@ export default {
         this.$emit('refresh')
       } catch (err) {
         console.error('Verwijder-fout:', err)
-        this.error = err?.message || 'Kan bestelling niet verwijderen.'
-        if (String(err.message).includes('401')) {
-          localStorage.removeItem('token')
-          this.$router.replace('/login')
-        }
+        this.error = 'Kan bestelling niet verwijderen.'
       } finally {
         this.loading = false
       }
