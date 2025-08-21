@@ -188,7 +188,8 @@
             </div>
 
             <div class="orders-grid" ref="ordersGrid">
-              <OrderList />
+              <!-- ✅ ref toegevoegd zodat de parent fetchOrders kan aanroepen -->
+              <OrderList ref="orderList" />
 
               <div
                 v-if="(query || statusFilter) && visibleCount === 0"
@@ -417,7 +418,7 @@ export default {
   },
 
   mounted() {
-    // ✅ Extra safety: als er geen token is, direct naar login
+    // ✅ Token-check: zonder token naar login
     const token = localStorage.getItem('token')
     if (!token) {
       this.$router.replace('/login')
@@ -457,18 +458,34 @@ export default {
     confirmLogout() {
       if (confirm('Weet je zeker dat je wilt uitloggen?')) {
         localStorage.removeItem('token')
-        this.$router.replace('/login') // replace i.p.v. push om back-stack te voorkomen
+        this.$router.replace('/login')
       }
     },
 
-    // Optioneel mooier: in plaats van reload, vraag het kind component te refreshem
-    refreshOrders() {
+    // ✅ Zachte refresh die ook op Render werkt (geen harde reload/404)
+    async refreshOrders() {
+      if (this.isRefreshing) return
       this.isRefreshing = true
-      // eenvoudig: herlaad pagina
-      setTimeout(() => {
-        window.location.reload()
-      }, 50)
-      // Wil je zonder reload? Geef OrderList een ref en roep this.$refs.orderList.fetchOrders() aan.
+      try {
+        const child = this.$refs.orderList
+        if (child && typeof child.fetchOrders === 'function') {
+          await child.fetchOrders()
+        } else {
+          // fallback: zachte route-refresh met query param (forceert re-render)
+          const q = { ...(this.$route.query || {}), _r: Date.now() }
+          await this.$router.replace({ path: this.$route.path, query: q })
+        }
+        // index/filter/sort opnieuw toepassen na DOM update
+        this.$nextTick(() => {
+          this.reindexRows()
+          this.applyFilter()
+          this.applySort()
+        })
+      } catch (_) {
+        // geen UI-fout nodig; knop stopt met draaien
+      } finally {
+        this.isRefreshing = false
+      }
     },
 
     clearFilters() {
